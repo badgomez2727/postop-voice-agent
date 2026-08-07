@@ -19,9 +19,15 @@
 //
 // Every other pattern only fires when the clause it matched in is not under
 // a denial. "Under a denial" means: a negation cue (no / nunca / jamás /
-// tampoco / ni) appears earlier in the same clause than the match. Position
-// matters -- "estoy sangrando mucho y no sé por qué" must still escalate;
-// the "no" there governs "por qué", not "sangrando".
+// tampoco / ni / nada) appears earlier in the same clause than the match.
+// Position matters -- "estoy sangrando mucho y no sé por qué" must still
+// escalate; the "no" there governs "por qué", not "sangrando".
+//
+// "nada" joined the list after evaluating against the official ground-truth
+// dataset (docs/evaluacion-triage.md): "nada de esas cosas de pus" was read
+// as a positive mention of pus, because the patient denies it with "nada"
+// instead of "no" -- the single most common denial word in that corpus that
+// this list was missing.
 //
 // A clause ends at a full stop, a semicolon, or a contrastive conjunction
 // ("pero", "aunque", "sin embargo", "sino") -- deliberately NOT at a bare
@@ -37,7 +43,7 @@
 // good enough, the fix belongs here, with a case added to
 // tests/triage.cases.mjs first.
 
-const NEGATION_CUE = /\b(no|nunca|jamás|jamas|tampoco|ni)\b/i;
+const NEGATION_CUE = /\b(no|nunca|jamás|jamas|tampoco|ni|nada)\b/i;
 // A period only ends a clause when it's not a decimal point ("38.7 grados"
 // must stay one clause, or the temperature pattern never sees the whole
 // number).
@@ -72,6 +78,45 @@ function isNegatedAt(clauseText, matchIndex) {
 // still reads as the patient actually said it.
 function stripAccents(text) {
   return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+// ---- Ajustes contra el ground truth oficial (docs/evaluacion-triage.md) --
+//
+// Cuatro señales que el dataset real usa constantemente y que ninguna regla
+// reconocía. Cada una está acotada a lo que el caso mal clasificado
+// realmente decía -- no es una generalización especulativa.
+
+// "Marcó 38.7" / "la temperatura... 39 algo" es tan claramente una lectura
+// de termómetro como "38.7 grados", pero sin "grados" ni "°" ninguna regla
+// de fiebre lo reconocía. Acotado a compartir cláusula con una palabra que
+// deja claro que se está hablando de temperatura -- un número de dos cifras
+// solo, en cualquier otro contexto, es demasiado ambiguo (edad, día, dosis).
+// No cruza cláusulas: "me la tomé... pero... 39 algo" en cláusulas
+// separadas por "pero" no lo dispara -- limitación conocida, documentada en
+// docs/evaluacion-triage.md, no una regresión de esta corrección.
+const CONTEXTO_TEMPERATURA = /\b(temperatura|marc\w*|termometro)\b/i;
+
+// Formas adjetivales de fiebre que no comparten el literal "fiebre":
+// "afiebrada" cambia la última vocal por concordancia de género, así que
+// /fiebre/i nunca la alcanza. "acalorada" es la forma coloquial más común
+// en el dataset real para lo mismo.
+const FORMA_ADJETIVAL_FIEBRE = /\b(afiebrad|acalorad)\w*\b/i;
+
+// "confundirse"/"desorientado" aparecen en el dataset real constantemente
+// como muletilla coloquial para "no recuerdo bien" -- confundirse CON los
+// días, las fechas, las llamadas, o cuál cirugía fue. Ninguno de esos es el
+// signo neurológico que RED-NEURO busca (alteración real del estado
+// mental). Se excluye SOLO cuando el objeto trivial de la confusión está
+// pegado a la palabra (mismo verbo, sin nada en medio salvo "con"/"de" y un
+// artículo) -- así "está como desorientada, no sabe bien ni qué día es
+// hoy" (tests/triage.cases.mjs, red-neuro-confusion-02) sigue disparando:
+// "día" no está pegado a "desorientada", hay una cláusula completa en
+// medio.
+const OBJETO_TRIVIAL_CONFUSION = /^\s*(con\s+|de\s+)?(los?\s+|las?\s+)?(dias?|fechas?|llamadas?|cual\b|cuant[oa]s?|horas?)\b/i;
+
+function confusionEsTrivial(match) {
+  const resto = match.input.slice(match.index + match[0].length);
+  return OBJETO_TRIVIAL_CONFUSION.test(resto);
 }
 
 const RULES = [
@@ -111,9 +156,14 @@ const RULES = [
       // knowledge/01-signos-de-alarma-generales.md lists confusion right
       // alongside fainting and loss of consciousness as an immediate flag --
       // it had no pattern here at all before this.
-      { regex: /confund\w+/i },
-      { regex: /confusion/i },
-      { regex: /desorientad\w+/i }
+      //
+      // validate: confusionEsTrivial() -- ver comentario junto a
+      // OBJETO_TRIVIAL_CONFUSION arriba. Contra el ground truth oficial,
+      // el 100% de los falsos positivos de RED-NEURO (15 de 15) venían de
+      // estos tres patrones disparando sobre "se me confunden los días".
+      { regex: /confund\w+/i, validate: match => !confusionEsTrivial(match) },
+      { regex: /confusion/i, validate: match => !confusionEsTrivial(match) },
+      { regex: /desorientad\w+/i, validate: match => !confusionEsTrivial(match) }
     ]
   },
   {
@@ -130,6 +180,19 @@ const RULES = [
           const value = parseFloat(match[1].replace(',', '.'));
           return Number.isFinite(value) && value >= 38.5;
         }
+      },
+      // "Me tomé la temperatura y marcó 38.7" -- mismo número, mismo umbral,
+      // sin "grados". Ver CONTEXTO_TEMPERATURA arriba. Acotado al mismo
+      // rango de prefijo (38/39/40) que ya usa AMBER-FEVER más abajo, para
+      // no romper el caso ya probado de que "37.8" sin la palabra "fiebre"
+      // no dispara nada (tests/triage.cases.mjs, amber-fever-below-threshold-01).
+      {
+        regex: /\b((?:38|39|40)(?:[.,]\d+)?)\b/,
+        validate: match => {
+          if (!CONTEXTO_TEMPERATURA.test(match.input)) return false;
+          const value = parseFloat(match[1].replace(',', '.'));
+          return Number.isFinite(value) && value >= 38.5;
+        }
       }
     ]
   },
@@ -142,7 +205,16 @@ const RULES = [
       { regex: /calentura/i },
       { regex: /(38|39|40)[.,]?\d*\s*(grados|°)/i },
       { regex: /me\s+hierv\w+/i },
-      { regex: /destemplanza/i }
+      { regex: /destemplanza/i },
+      // Mismo número que RED-FEVER-HIGH, sin "grados" -- ver comentario
+      // arriba. Sin el umbral de 38.5: cualquier lectura en 38/39/40 con
+      // contexto de temperatura ya es "fiebre reportada", igual que ya pasa
+      // hoy con el patrón de arriba cuando sí trae "grados".
+      {
+        regex: /\b(?:38|39|40)(?:[.,]\d+)?\b/,
+        validate: match => CONTEXTO_TEMPERATURA.test(match.input)
+      },
+      { regex: FORMA_ADJETIVAL_FIEBRE }
     ]
   },
   {
@@ -154,7 +226,17 @@ const RULES = [
       { regex: /mal\s+olor/i },
       { regex: /(herida|cicatriz)\s+\w*\s*(roja|caliente|hinchada|inflamada)/i },
       { regex: /supur\w+/i },
-      { regex: /se\s+(abri[óo]|abrio)\s+(la\s+)?(herida|puntos)/i }
+      { regex: /se\s+(abri[óo]|abrio)\s+(la\s+)?(herida|puntos)/i },
+      // "Un líquido amarillo saliendo de la herida" es clínicamente
+      // equivalente a "pus" pero no comparte esa palabra -- la forma más
+      // común en el dataset real de describir supuración sin el término
+      // médico. validate exige "sal-" (sale/salir/saliendo) en la misma
+      // cláusula para no capturar una mención de líquidos sin relación
+      // (hidratación, orina) que solo coincida en color por casualidad.
+      {
+        regex: /liquido\w*[^.;]{0,25}?(amarill\w*|verdos\w*|purulent\w*)/i,
+        validate: match => /\bsal\w*\b/i.test(match.input)
+      }
     ]
   },
   {
