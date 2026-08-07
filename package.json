@@ -1,0 +1,16 @@
+{
+  "name": "postop-voice-agent",
+  "version": "0.1.0",
+  "description": "Voice agent for post-operative patient follow-up: grounded clinical answers (RAG), live knowledge console, source traceability and human-escalation logic.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node tests/run-triage-tests.mjs"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

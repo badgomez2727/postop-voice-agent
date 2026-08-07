@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seguimiento post-operatorio · Consola</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0d1417;
+    --panel: #151f23;
+    --panel-2: #1b262b;
+    --line: #24343b;
+    --line-soft: #1e2c32;
+    --text: #dfe8ea;
+    --text-dim: #8fa3aa;
+    --paper: #e9eeef;
+    --signal: #4fb3a5;
+    --amber: #d9a03c;
+    --alert: #d95a4e;
+    --sans: 'IBM Plex Sans', system-ui, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  /* ---- status strip ---- */
+
+  header {
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+    padding: 14px 22px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px 28px;
+    align-items: center;
+  }
+
+  header h1 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  header h1 span { color: var(--text-dim); font-weight: 400; }
+
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .lamp {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--text-dim);
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.04);
+  }
+  .lamp[data-level="none"]  { background: var(--signal); }
+  .lamp[data-level="amber"] { background: var(--amber); }
+  .lamp[data-level="red"]   { background: var(--alert); animation: throb 1.1s ease-in-out infinite; }
+
+  @keyframes throb { 50% { opacity: 0.35; } }
+
+  /* ---- layout ---- */
+
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 1px;
+    background: var(--line);
+    min-height: calc(100vh - 59px);
+  }
+
+  section { background: var(--ink); padding: 22px; min-width: 0; }
+
+  .section-head {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  /* ---- transcript ---- */
+
+  .transcript {
+    display: flex; flex-direction: column; gap: 12px;
+    max-height: 46vh; overflow-y: auto; padding-right: 6px;
+  }
+
+  .line { max-width: 88%; }
+  .line .who {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px;
+  }
+  .line .said {
+    padding: 10px 13px; border-radius: 3px; font-size: 14.5px;
+  }
+  .line.agent .said { background: var(--panel-2); border-left: 2px solid var(--signal); }
+  .line.patient { margin-left: auto; }
+  .line.patient .said { background: var(--paper); color: #16232a; }
+  .line.patient .who { text-align: right; }
+
+  /* ---- controls ---- */
+
+  .controls {
+    margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line-soft);
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  }
+
+  button {
+    font-family: var(--sans); font-size: 13.5px; font-weight: 500;
+    padding: 9px 15px; border-radius: 3px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+    transition: border-color .15s, background .15s;
+  }
+  button:hover:not(:disabled) { border-color: var(--signal); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+  button.primary { background: var(--signal); color: #08181a; border-color: var(--signal); font-weight: 600; }
+  button.listening { background: var(--alert); border-color: var(--alert); color: #fff; animation: throb 1.3s ease-in-out infinite; }
+
+  input[type=text], textarea {
+    font-family: var(--sans); font-size: 14px;
+    background: var(--panel); color: var(--text);
+    border: 1px solid var(--line); border-radius: 3px; padding: 9px 11px;
+    width: 100%;
+  }
+  input:focus, textarea:focus { outline: none; border-color: var(--signal); }
+  textarea { font-family: var(--mono); font-size: 12.5px; resize: vertical; }
+
+  .typed-row { display: flex; gap: 8px; width: 100%; }
+  .typed-row input { flex: 1; }
+
+  /* ---- signature: evidence ledger ---- */
+
+  .ledger { font-family: var(--mono); font-size: 12px; }
+
+  .entry {
+    border-left: 2px solid var(--line);
+    padding: 0 0 14px 13px; margin-bottom: 14px; position: relative;
+  }
+  .entry::before {
+    content: ''; position: absolute; left: -4px; top: 5px;
+    width: 6px; height: 6px; border-radius: 50%; background: var(--line);
+  }
+  .entry[data-grounded="true"] { border-left-color: var(--signal); }
+  .entry[data-grounded="true"]::before { background: var(--signal); }
+  .entry[data-grounded="false"] { border-left-color: var(--amber); }
+  .entry[data-grounded="false"]::before { background: var(--amber); }
+
+  .entry .claim { color: var(--text); font-family: var(--sans); font-size: 13.5px; margin-bottom: 8px; }
+
+  .src { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+  .src .id { color: var(--signal); white-space: nowrap; }
+  .src .bar { flex: 1; height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; min-width: 40px; }
+  .src .bar i { display: block; height: 100%; background: var(--signal); }
+  .src .pct { color: var(--text-dim); font-size: 11px; }
+
+  .no-src { color: var(--amber); font-size: 11.5px; }
+
+  .flag {
+    display: inline-block; font-size: 10.5px; letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 2px 7px; border-radius: 2px; margin: 4px 4px 0 0;
+  }
+  .flag[data-level="amber"] { background: rgba(217,160,60,.16); color: var(--amber); }
+  .flag[data-level="red"]   { background: rgba(217,90,78,.18); color: var(--alert); }
+
+  /* ---- knowledge console ---- */
+
+  .kb { border-top: 1px solid var(--line); grid-column: 1 / -1; background: var(--panel); }
+
+  .docs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .doc {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 11.5px;
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 3px; padding: 6px 6px 6px 11px;
+  }
+  .doc .meta { color: var(--text-dim); }
+  .doc button { padding: 2px 7px; font-size: 11px; font-family: var(--mono); }
+  .doc button:hover { border-color: var(--alert); color: var(--alert); }
+
+  .add { display: grid; gap: 8px; max-width: 620px; }
+
+  .empty { color: var(--text-dim); font-size: 13.5px; }
+
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--panel-2); border: 1px solid var(--signal);
+    padding: 10px 16px; border-radius: 3px; font-size: 13.5px;
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .toast.show { opacity: 1; }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Seguimiento post-operatorio <span>· consola de operación</span></h1>
+  <div class="status">
+    <span class="lamp" id="lamp" data-level="idle"></span>
+    <span id="statusText">Sin llamada activa</span>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="section-head">
+      <span class="eyebrow">Llamada</span>
+      <span class="eyebrow" id="callId" style="color:var(--line)"></span>
+    </div>
+
+    <div class="transcript" id="transcript">
+      <p class="empty">Inicie la llamada para comenzar el seguimiento.</p>
+    </div>
+
+    <div class="controls">
+      <button class="primary" id="btnStart">Iniciar llamada</button>
+      <button id="btnMic" disabled>Hablar</button>
+      <button id="btnEnd" disabled>Terminar y resumir</button>
+      <div class="typed-row">
+        <input type="text" id="typed" placeholder="O escriba lo que dice el paciente" disabled>
+        <button id="btnSend" disabled>Enviar</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="eyebrow">Registro de evidencia</span>
+    </div>
+    <p class="empty" id="ledgerEmpty">Cada respuesta clínica del agente queda aquí con el documento que la sustenta.</p>
+    <div class="ledger" id="ledger"></div>
+  </section>
+
+  <section class="kb">
+    <div class="section-head">
+      <span class="eyebrow">Base de conocimiento</span>
+      <span class="eyebrow" id="kbCount"></span>
+    </div>
+    <div class="docs" id="docs"></div>
+    <div class="add">
+      <input type="text" id="docName" placeholder="nombre-del-documento.md">
+      <textarea id="docBody" rows="4" placeholder="Contenido del documento. Al guardarlo, el agente lo usa en la siguiente pregunta."></textarea>
+      <div><button id="btnAddDoc">Agregar al conocimiento</button></div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let callId = null;
+let recognition = null;
+let listening = false;
+
+function toast(message) {
+  const el = $('toast');
+  el.textContent = message;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+function setStatus(level, text) {
+  $('lamp').dataset.level = level;
+  $('statusText').textContent = text;
+}
+
+function addLine(who, text) {
+  const transcript = $('transcript');
+  transcript.querySelector('.empty')?.remove();
+  const line = document.createElement('div');
+  line.className = 'line ' + who;
+  line.innerHTML = `<div class="who">${who === 'agent' ? 'Agente' : 'Paciente'}</div><div class="said"></div>`;
+  line.querySelector('.said').textContent = text;
+  transcript.appendChild(line);
+  transcript.scrollTop = transcript.scrollHeight;
+}
+
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'es-CO';
+  utterance.rate = 1.02;
+  speechSynthesis.speak(utterance);
+}
+
+function addLedgerEntry({ claim, evidence, grounded, triage }) {
+  $('ledgerEmpty')?.remove();
+  const entry = document.createElement('div');
+  entry.className = 'entry';
+  entry.dataset.grounded = String(grounded && evidence.length > 0);
+
+  const claimEl = document.createElement('div');
+  claimEl.className = 'claim';
+  claimEl.textContent = claim;
+  entry.appendChild(claimEl);
+
+  if (evidence.length) {
+    for (const source of evidence) {
+      const row = document.createElement('div');
+      row.className = 'src';
+      row.innerHTML =
+        `<span class="id"></span>` +
+        `<span class="bar"><i style="width:${Math.round(source.relevance * 100)}%"></i></span>` +
+        `<span class="pct">${Math.round(source.relevance * 100)}%</span>`;
+      row.querySelector('.id').textContent = source.sourceId;
+      entry.appendChild(row);
+    }
+  } else {
+    const none = document.createElement('div');
+    none.className = 'no-src';
+    none.textContent = 'Sin documento de respaldo — el agente no debe afirmar contenido clínico aquí.';
+    entry.appendChild(none);
+  }
+
+  for (const finding of triage.findings || []) {
+    const flag = document.createElement('span');
+    flag.className = 'flag';
+    flag.dataset.level = finding.level;
+    flag.textContent = `${finding.id} · "${finding.trigger}"`;
+    entry.appendChild(flag);
+  }
+
+  $('ledger').prepend(entry);
+}
+
+async function api(url, options = {}) {
+  const response = await fetch(url, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+async function startCall() {
+  try {
+    const data = await api('/api/calls', {
+      method: 'POST',
+      body: JSON.stringify({ patientAlias: 'Paciente de prueba', procedure: 'Procedimiento de prueba' })
+    });
+    callId = data.callId;
+    $('callId').textContent = callId.slice(0, 8);
+    $('transcript').innerHTML = '';
+    $('ledger').innerHTML = '';
+    addLine('agent', data.agent);
+    speak(data.agent);
+    setStatus('none', 'Llamada activa · sin signos de alarma');
+    ['btnMic', 'btnEnd', 'btnSend', 'typed'].forEach(id => { $(id).disabled = false; });
+    $('btnStart').textContent = 'Reiniciar llamada';
+  } catch (error) {
+    toast(error.message);
+  }
+}
+
+async function sendUtterance(utterance) {
+  if (!callId || !utterance.trim()) return;
+  addLine('patient', utterance);
+
+  try {
+    const data = await api(`/api/calls/${callId}/turns`, {
+      method: 'POST',
+      body: JSON.stringify({ utterance })
+    });
+
+    addLine('agent', data.agent);
+    speak(data.agent);
+    addLedgerEntry({ claim: data.agent, evidence: data.evidence, grounded: data.grounded, triage: data.triage });
+
+    if (data.triage.level === 'red') setStatus('red', 'Escalamiento inmediato requerido');
+    else if (data.triage.level === 'amber') setStatus('amber', 'Marcado para revisión');
+    else setStatus('none', 'Llamada activa · sin signos de alarma');
+  } catch (error) {
+    toast(error.message);
+  }
+}
+
+function setupMic() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    $('btnMic').textContent = 'Voz no disponible';
+    $('btnMic').title = 'Este navegador no expone reconocimiento de voz. Use el campo de texto.';
+    return;
+  }
+
+  recognition = new SpeechRecognition();
+  recognition.lang = 'es-CO';
+  recognition.interimResults = false;
+  recognition.continuous = false;
+
+  recognition.onresult = event => sendUtterance(event.results[0][0].transcript);
+  recognition.onerror = event => toast('Micrófono: ' + event.error);
+  recognition.onend = () => {
+    listening = false;
+    $('btnMic').classList.remove('listening');
+    $('btnMic').textContent = 'Hablar';
+  };
+}
+
+$('btnMic').onclick = () => {
+  if (!recognition) { toast('Use el campo de texto en este navegador.'); return; }
+  if (listening) { recognition.stop(); return; }
+  speechSynthesis.cancel();
+  listening = true;
+  $('btnMic').classList.add('listening');
+  $('btnMic').textContent = 'Escuchando…';
+  recognition.start();
+};
+
+$('btnStart').onclick = startCall;
+$('btnSend').onclick = () => { sendUtterance($('typed').value); $('typed').value = ''; };
+$('typed').onkeydown = event => { if (event.key === 'Enter') $('btnSend').click(); };
+
+$('btnEnd').onclick = async () => {
+  try {
+    const summary = await api(`/api/calls/${callId}/end`, { method: 'POST' });
+    setStatus(summary.triage.level, 'Llamada cerrada · ' + summary.triage.disposition);
+    const blob = new Blob([JSON.stringify(summary, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `resumen-${summary.callId.slice(0, 8)}.json`;
+    link.click();
+    toast('Resumen estructurado descargado');
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+async function loadKnowledge() {
+  try {
+    const data = await api('/api/knowledge');
+    $('kbCount').textContent = `${data.documents.length} documentos · ${data.totalChunks} fragmentos`;
+    const container = $('docs');
+    container.innerHTML = '';
+
+    if (!data.documents.length) {
+      container.innerHTML = '<p class="empty">La base está vacía. El agente no podrá fundamentar ninguna respuesta clínica.</p>';
+      return;
+    }
+
+    for (const doc of data.documents) {
+      const el = document.createElement('div');
+      el.className = 'doc';
+      el.innerHTML = `<span class="name"></span><span class="meta">${doc.chunks} frag.</span><button>quitar</button>`;
+      el.querySelector('.name').textContent = doc.file;
+      el.querySelector('button').onclick = async () => {
+        await api('/api/knowledge/' + encodeURIComponent(doc.file), { method: 'DELETE' });
+        toast(`${doc.file} eliminado — el agente lo olvidó`);
+        loadKnowledge();
+      };
+      container.appendChild(el);
+    }
+  } catch (error) {
+    toast(error.message);
+  }
+}
+
+$('btnAddDoc').onclick = async () => {
+  const filename = $('docName').value.trim();
+  const content = $('docBody').value.trim();
+  if (!filename || !content) { toast('Falta el nombre o el contenido del documento.'); return; }
+  try {
+    await api('/api/knowledge', { method: 'POST', body: JSON.stringify({ filename, content }) });
+    $('docName').value = '';
+    $('docBody').value = '';
+    toast(`${filename} agregado — disponible en la siguiente pregunta`);
+    loadKnowledge();
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+setupMic();
+loadKnowledge();
+</script>
+</body>
+</html>

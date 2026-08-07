@@ -1,0 +1,26 @@
+flowchart TD
+    P["Paciente<br/>(voz, navegador)"] -->|Web Speech API: STT| UI["Consola de operación<br/>public/index.html"]
+    UI -->|POST /api/calls/:id/turns| S["Servidor Express<br/>src/server.js"]
+
+    S --> T["Motor de triage<br/>src/triage.js<br/>reglas deterministas"]
+    S --> R["Recuperación<br/>src/rag.js<br/>índice TF-IDF en memoria"]
+
+    R -->|pasajes + sourceId + relevancia| S
+    T -->|nivel: none / amber / red| S
+
+    S --> L["Adaptador de modelo<br/>src/llm.js"]
+    L -->|"contexto recuperado únicamente"| M["Modelo único obligatorio<br/>(se define el 7 de agosto)"]
+    M -->|"reply + usedSources"| L
+    L --> S
+
+    S --> SE["Estado de la llamada<br/>src/session.js"]
+    SE --> SUM["Resumen estructurado<br/>triage + trazabilidad + transcripción"]
+
+    S -->|respuesta + evidencia| UI
+    UI -->|SpeechSynthesis: TTS| P
+    UI -->|"registro de evidencia"| LED["Cada afirmación con<br/>su documento de respaldo"]
+
+    KB["knowledge/*.md"] -->|"reindexado en cada cambio"| R
+    UI -->|"POST / DELETE /api/knowledge"| KB
+
+    T -.->|"nivel = red"| ESC["Alerta a personal capacitado"]
