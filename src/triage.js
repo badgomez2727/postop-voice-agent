@@ -19,15 +19,21 @@
 //
 // Every other pattern only fires when the clause it matched in is not under
 // a denial. "Under a denial" means: a negation cue (no / nunca / jamás /
-// tampoco / ni / nada) appears earlier in the same clause than the match.
-// Position matters -- "estoy sangrando mucho y no sé por qué" must still
-// escalate; the "no" there governs "por qué", not "sangrando".
+// tampoco / ni / nada / sin) appears earlier in the same clause than the
+// match. Position matters -- "estoy sangrando mucho y no sé por qué" must
+// still escalate; the "no" there governs "por qué", not "sangrando".
 //
 // "nada" joined the list after evaluating against the official ground-truth
 // dataset (docs/evaluacion-triage.md): "nada de esas cosas de pus" was read
 // as a positive mention of pus, because the patient denies it with "nada"
 // instead of "no" -- the single most common denial word in that corpus that
 // this list was missing.
+//
+// "sin" joined after manually testing the live server: "me siento bien, sin
+// fiebre ni dolor fuerte" fired AMBER-FEVER on "fiebre" -- the patient is
+// denying the symptom, not reporting it. "sin embargo" doesn't collide with
+// this: it's already its own clause boundary (below), consumed by
+// splitClauses() before NEGATION_CUE is ever tested against what's left.
 //
 // A clause ends at a full stop, a semicolon, or a contrastive conjunction
 // ("pero", "aunque", "sin embargo", "sino") -- deliberately NOT at a bare
@@ -43,7 +49,7 @@
 // good enough, the fix belongs here, with a case added to
 // tests/triage.cases.mjs first.
 
-const NEGATION_CUE = /\b(no|nunca|jamás|jamas|tampoco|ni|nada)\b/i;
+const NEGATION_CUE = /\b(no|nunca|jamás|jamas|tampoco|ni|nada|sin)\b/i;
 // A period only ends a clause when it's not a decimal point ("38.7 grados"
 // must stay one clause, or the temperature pattern never sees the whole
 // number).
@@ -248,7 +254,14 @@ const RULES = [
     label: 'Dolor no controlado',
     patterns: [
       { regex: /dolor\s+\w*\s*(insoportable|muy\s+fuerte|terrible|10\s*de\s*10)/i },
-      { regex: /(el\s+)?dolor\s+no\s+(se\s+)?(quita|calma|baja)/i, selfNegating: true },
+      // "no se ME quita" es como la mayoría de la gente lo dice en
+      // realidad -- el pronombre reflexivo "se" casi nunca va solo, trae el
+      // clítico de objeto indirecto (me/le/nos) pegado. El patrón original
+      // solo cubría "no se quita", sin ese pronombre en medio, así que
+      // nunca hizo match con la frase que su propio comentario de arriba
+      // usa como ejemplo. Confirmado contra el servidor real: "el dolor no
+      // se me quita con nada" no disparaba nada antes de este cambio.
+      { regex: /(el\s+)?dolor\s+no\s+(se\s+)?(me|le|nos)?\s*(quita|calma|baja)/i, selfNegating: true },
       { regex: /ni\s+con\s+(las\s+)?pastillas/i, selfNegating: true }
     ]
   },

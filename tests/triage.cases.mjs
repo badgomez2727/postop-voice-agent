@@ -402,5 +402,56 @@ export const cases = [
     // nada, con o sin RED-FEVER-HIGH. Se documenta a propósito.
     utterance: 'Me tomé la temperatura y marcó 37.8 grados.',
     expect: { level: 'none' }
+  },
+
+  // ---- "sin" como negador ----------------------------------------------
+  {
+    id: 'negation-sin-01',
+    category: 'negacion/sin',
+    // Probado contra el servidor real antes de escribir el fix: "sin
+    // fiebre" disparaba AMBER-FEVER sobre "fiebre" como si el paciente la
+    // reportara -- NEGATION_CUE no incluía "sin", solo no/nunca/jamás/
+    // tampoco/ni/nada.
+    utterance: 'Me siento bien, sin fiebre ni dolor fuerte.',
+    expect: { level: 'none' }
+  },
+  {
+    id: 'negation-sin-02',
+    category: 'negacion/sin',
+    // "sin embargo" no debe interferir: ya es su propio límite de cláusula
+    // (CLAUSE_BOUNDARY), consumido por splitClauses() antes de que
+    // NEGATION_CUE se pruebe contra lo que queda.
+    utterance: 'Me revisé la herida, sin embargo tiene mal olor.',
+    expect: { level: 'amber', findingIds: ['AMBER-WOUND'] }
+  },
+  {
+    id: 'negation-sin-03',
+    category: 'negacion/sin',
+    // "sin" en un sentido que NO niega el síntoma sino que lo intensifica
+    // ("sin parar" = sin detenerse) no debe suprimir un hallazgo que
+    // aparece antes en la cláusula -- isNegatedAt solo mira cués que
+    // aparecen ANTES del match, y aquí "mucho" (el disparador) va antes
+    // que "sin".
+    utterance: 'Estoy sangrando mucho sin parar.',
+    expect: { level: 'red', findingIds: ['RED-BLEEDING'] }
+  },
+
+  // ---- AMBER-PAIN: pronombre reflexivo con clítico ---------------------
+  {
+    id: 'amber-pain-clitic-01',
+    category: 'amber/dolor',
+    // El comentario junto a NEGATION_CUE usa literalmente "el dolor no se
+    // me quita" como ejemplo de frase que debe disparar -- pero el patrón
+    // no contemplaba el "me" entre "se" y "quita", así que esa frase
+    // exacta nunca disparó nada. Confirmado contra el servidor real antes
+    // del fix.
+    utterance: 'El dolor no se me quita con nada.',
+    expect: { level: 'amber', findingIds: ['AMBER-PAIN'] }
+  },
+  {
+    id: 'amber-pain-clitic-02',
+    category: 'amber/dolor',
+    utterance: 'El dolor no se me calma ni descansando.',
+    expect: { level: 'amber', findingIds: ['AMBER-PAIN'] }
   }
 ];
