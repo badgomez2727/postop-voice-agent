@@ -11,7 +11,7 @@ const KNOWLEDGE_DIR = path.resolve('knowledge');
  * That is the "hot knowledge" gate: the agent learns and forgets while the
  * call is still running.
  */
-let index = { chunks: [], df: new Map(), docs: [] };
+let index = { chunks: [], df: new Map(), docs: [], docMeta: new Map() };
 
 const STOPWORDS = new Set(
   ('de la que el en y a los del se las por un para con no una su al lo como mas pero sus le ya o este si porque esta entre cuando muy sin sobre tambien me hasta hay donde quien desde todo nos durante todos uno les ni contra otros ese eso ante ellos e esto mi antes algunos qué unos yo otro otras otra él tanto esa estos mucho quienes nada muchos cual sea poco ella estar haber estas estaba estamos algunas algo nosotros mi mis tu te ti tus ellas nosotras vosotros vosotras os mio mia').split(/\s+/)
@@ -51,6 +51,59 @@ function tokenize(text) {
     .split(/\s+/)
     .filter(t => t.length > 2 && !STOPWORDS.has(t))
     .map(stem);
+}
+
+// ---- Metadatos de encabezado ------------------------------------------------
+//
+// Todo archivo en knowledge/ (los 4 sintéticos originales y los 104 que
+// escribe tools/ingestar-corpus.js) empieza con un título en H1 y, debajo,
+// un bloque de cita ("> ...") de una o más líneas: la nota de fuente que
+// añade el ingestor, o la advertencia de "documento de ejemplo" de los
+// sintéticos. Es la misma razón por la que un fragmento de portada puntuaba
+// alto antes del filtro de calidad: esas líneas están llenas de palabras
+// clave (el título repite el tema del documento; la nota de fuente lleva la
+// ruta completa del PDF, con toda su carpeta y nombre de archivo) pero no
+// son contenido clínico. fragmentQuality() ya las penaliza cuando aparecen
+// mezcladas en un fragmento largo, pero en el fragmento #1 de cada documento
+// son casi todo el texto — ninguna penalización continua compensa eso.
+//
+// Se extraen aparte, antes de fragmentar, y no entran al texto indexado en
+// absoluto. La procedencia no se pierde: queda en docMeta y se adjunta a
+// cada resultado de retrieve() para que la evidencia se pueda seguir
+// rastreando hasta el PDF exacto (regla 2 de CLAUDE.md), solo que ya no
+// compite por relevancia con el contenido real.
+function extractFrontMatter(raw) {
+  const lines = raw.split('\n');
+  let i = 0;
+  let title = null;
+
+  if (lines[i]?.startsWith('# ')) {
+    title = lines[i].slice(2).trim();
+    i++;
+  }
+  while (lines[i] === '') i++;
+
+  const noteLines = [];
+  while (lines[i]?.startsWith('>')) {
+    noteLines.push(lines[i].replace(/^>\s?/, ''));
+    i++;
+  }
+  while (lines[i] === '') i++;
+
+  const sourceNote = noteLines.length ? noteLines.join(' ').trim() : null;
+  // La nota que escribe tools/ingestar-corpus.js tiene la forma
+  // "Fuente: `<ruta del PDF>` (carpeta original: ...)". Si está, se extrae
+  // la ruta limpia para mostrarla; si no (documentos sintéticos o subidos a
+  // mano desde la consola), sourcePath queda null y solo se muestra el
+  // nombre de archivo, que ya es trazable por sí mismo.
+  const sourcePathMatch = sourceNote?.match(/Fuente:\s*`([^`]+)`/);
+
+  return {
+    title,
+    sourceNote,
+    sourcePath: sourcePathMatch ? sourcePathMatch[1] : null,
+    body: lines.slice(i).join('\n')
+  };
 }
 
 /** Split a document into overlapping chunks on paragraph boundaries. */
@@ -177,10 +230,17 @@ export async function rebuildIndex() {
 
   const chunks = [];
   const docs = [];
+  const docMeta = new Map();
 
   for (const file of files) {
     const raw = await fs.readFile(path.join(KNOWLEDGE_DIR, file), 'utf8');
-    const pieces = chunkDocument(raw);
+    const { title, sourcePath, body } = extractFrontMatter(raw);
+    docMeta.set(file, { title, sourcePath });
+
+    // Se fragmenta el cuerpo sin el título ni la nota de fuente — ver
+    // extractFrontMatter(). El texto en disco (knowledge/*.md) no cambia; lo
+    // único que cambia es qué parte de él entra al índice.
+    const pieces = chunkDocument(body);
     let indexedCount = 0;
 
     pieces.forEach((text, i) => {
@@ -207,7 +267,7 @@ export async function rebuildIndex() {
       indexedCount++;
     });
 
-    docs.push({ file, chunks: indexedCount, bytes: Buffer.byteLength(raw) });
+    docs.push({ file, chunks: indexedCount, bytes: Buffer.byteLength(raw), title, sourcePath });
   }
 
   const df = new Map();
@@ -215,7 +275,7 @@ export async function rebuildIndex() {
     for (const token of chunk.tf.keys()) df.set(token, (df.get(token) || 0) + 1);
   }
 
-  index = { chunks, df, docs };
+  index = { chunks, df, docs, docMeta };
   return listDocuments();
 }
 
@@ -296,6 +356,12 @@ export function retrieve(question, { k = 3, minAbsoluteScore = DEFAULT_MIN_ABSOL
       // la barra de la consola en public/index.html) — rawScore es la que
       // dice si ese "mejor resultado" era en sí mismo bueno.
       relevance: Number((rawScore / maxRaw).toFixed(3)),
+      // Título y ruta del PDF de origen ya no están en el texto indexado
+      // (ver extractFrontMatter), pero la trazabilidad hasta el documento
+      // fuente sigue siendo obligatoria (CLAUDE.md regla 2) — se adjuntan
+      // aquí en vez de dejar que compitan por relevancia dentro del texto.
+      title: index.docMeta.get(chunk.file)?.title ?? null,
+      sourcePath: index.docMeta.get(chunk.file)?.sourcePath ?? null,
       text: chunk.text
     }));
 }
