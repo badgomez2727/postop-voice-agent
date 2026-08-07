@@ -141,6 +141,85 @@ problema real. Si Groq o Gemini reaparecen o el reto actualiza la lista
 permitida antes del 10 de agosto, seguirían siendo preferibles por latencia
 — pero no es algo que se pueda dar por sentado a esta altura.
 
+## 6. Escalamiento por acumulación de hallazgos ámbar
+
+**El problema.** `mergeAssessments()` toma el máximo de los hallazgos de toda
+la llamada — nunca los combina. Contra el ground truth oficial
+(`docs/evaluacion-triage.md`), varios de los 12 casos rojo tienen fiebre por
+debajo de 38.5° (el umbral individual de `RED-FEVER-HIGH`), pero junto con
+dolor alto, herida con drenaje o declive de movilidad simultáneos. Su
+etiqueta "rojo" parece venir de la combinación, no de un signo aislado —
+igual que un sistema de alerta temprana clínico real, que puntúa y escala
+por acumulación, no solo por el peor signo individual.
+
+**Decisión: N=2 — dos hallazgos ámbar en dominios clínicos distintos
+(fiebre, herida, dolor, vía oral, movilidad) escalan a rojo.**
+
+**La evidencia, no un umbral afinado a ojo.** Se midió cuántos dominios
+ámbar simultáneos alcanza cada uno de los 320 casos×capa del dataset
+oficial, por etiqueta real:
+
+| Dominios ámbar simultáneos | verde | amarillo | rojo |
+|---|---|---|---|
+| 0 | 224 | 41 | 4 |
+| 1 | 22 | 9 | 12 |
+| **2** | **0** | **0** | **8** |
+
+**Ningún caso verde ni amarillo alcanza nunca 2 dominios ámbar a la vez, en
+los 320 casos evaluados. Solo los rojos lo hacen.** La separación es limpia
+en los datos: N=2 no es una elección entre varias razonables, es el único
+punto de corte que existe entre "nunca pasa en un caso sano" y "pasa en 8
+de 12 casos rojo". Los 8 casos que la cruzan:
+
+```
+caso_tray_pac_42_00017_14 (ambas capas) -> fiebre+herida
+caso_tray_pac_42_00019_7  (capa1)       -> fiebre+movilidad
+caso_tray_pac_42_00026_7  (ambas capas) -> fiebre+herida
+caso_tray_pac_42_00028_7  (capa1)       -> fiebre+herida
+caso_tray_pac_42_00028_14 (ambas capas) -> fiebre+movilidad
+```
+
+**Por qué no N=3 o N=4.** Ningún caso del dataset —ni siquiera los rojo—
+alcanza nunca 3 dominios ámbar simultáneos. N=3 y N=4 miden exactamente
+igual que no tener acumulación: recall de rojos se queda en 2/24 (8.3%),
+igual que el baseline sin este mecanismo.
+
+**Efecto medido — recall de rojos, antes/después de acumulación con N=2:**
+
+| | Recall rojo | Falsos positivos nuevos |
+|---|---|---|
+| Sin acumulación (decisión 5, commit `f7bd354`) | 2/24 (8.3%) | — |
+| Con acumulación N=2 | 10/24 (41.7%) | 0 sobre 320 casos×capa |
+
+**`AMBER-MOBILITY`, la regla que faltaba.** "Movilidad" no tenía ninguna
+regla ámbar — dominio vacío, no podía contribuir. Los patrones se
+derivaron leyendo las 70 respuestas reales de pacientes a la pregunta de
+movilidad en los casos rojo/ámbar del dataset (no inventados): de esas 70,
+solo 2 describen una limitación genuinamente severa —el resto enmarca la
+lentitud o la necesidad de apoyo como esperada tras la cirugía ("despacito,
+como es normal", "con ayuda, como esperaban que fuera")— y los patrones
+están acotados a esas 2 frases reales:
+
+- `caso_tray_pac_42_00019_7`: *"Antes me movía sola sin problema y ahora casi
+  no puedo levantarme, necesito que alguien me ayude para todo."*
+- `caso_tray_pac_42_00028_14`: *"casi no puedo ni levantarme sola, siento la
+  pierna como que no responde, muy incapacitada me siento."*
+
+Verificado: la regla dispara exactamente 4 veces (esos 2 casos × 2 capas) de
+las 70 respuestas revisadas — cero falsos positivos sobre las otras 68.
+
+**Riesgo — 0 falsos positivos es una medición, no una garantía.** Es sobre
+320 casos sintéticos de este dataset, no una prueba matemática. Es una señal
+fuerte (la separación es total, no marginal), pero con dos semanas más esto
+se re-mide contra un lote más grande — sintético o real— antes de confiar en
+él sin reservas para producción.
+
+**Con dos semanas más.** Medir la curva N=2/3/4 contra un lote más grande
+(el dataset real solo tiene 12 casos rojo — cualquier curva medida sobre
+eso tiene poco margen estadístico). Considerar si el umbral N debería variar
+por combinación de dominios (fiebre+movilidad puede no pesar igual que
+dolor+vía_oral) en vez de ser un número único.
+
 ## Pendientes antes de entregar
 
 - [ ] **Urgente — riesgo directo a G4.** Latencia de turno completo (contexto

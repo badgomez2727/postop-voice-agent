@@ -199,6 +199,7 @@ const RULES = [
   {
     id: 'AMBER-FEVER',
     level: 'amber',
+    domain: 'fiebre',
     label: 'Fiebre reportada',
     patterns: [
       { regex: /fiebre/i },
@@ -220,6 +221,7 @@ const RULES = [
   {
     id: 'AMBER-WOUND',
     level: 'amber',
+    domain: 'herida',
     label: 'Signos locales de infección',
     patterns: [
       { regex: /pus/i },
@@ -242,6 +244,7 @@ const RULES = [
   {
     id: 'AMBER-PAIN',
     level: 'amber',
+    domain: 'dolor',
     label: 'Dolor no controlado',
     patterns: [
       { regex: /dolor\s+\w*\s*(insoportable|muy\s+fuerte|terrible|10\s*de\s*10)/i },
@@ -252,6 +255,7 @@ const RULES = [
   {
     id: 'AMBER-VOMIT',
     level: 'amber',
+    domain: 'via_oral',
     label: 'Vómito persistente o intolerancia oral',
     patterns: [
       { regex: /vomit\w+/i },
@@ -260,6 +264,30 @@ const RULES = [
       // way, and the rule missed it.
       { regex: /no\s+(puedo|logro|he\s+podido|he\s+logrado)\s+(comer|tomar|retener)/i, selfNegating: true },
       { regex: /devuelv\w+\s+todo/i }
+    ]
+  },
+  {
+    // No existía ninguna regla de movilidad antes de esto. Patrones
+    // derivados de las 70 respuestas de pacientes a la pregunta de
+    // movilidad en casos rojo/ámbar del dataset oficial -- no inventados.
+    // De esas 70, solo 2 describen una limitación genuinamente severa; las
+    // otras 68 enmarcan la lentitud o la necesidad de apoyo como esperada
+    // tras la cirugía ("despacito, como es normal", "con ayuda, como
+    // esperaban que fuera") y no deben disparar nada. Los patrones están
+    // acotados a las frases reales de esas 2:
+    //   caso_tray_pac_42_00019_7: "Antes me movía sola sin problema y ahora
+    //     casi no puedo levantarme, necesito que alguien me ayude para todo."
+    //   caso_tray_pac_42_00028_14: "casi no puedo ni levantarme sola, siento
+    //     la pierna como que no responde, muy incapacitada me siento."
+    id: 'AMBER-MOBILITY',
+    level: 'amber',
+    domain: 'movilidad',
+    label: 'Declive funcional o de movilidad',
+    patterns: [
+      { regex: /no\s+puedo\s+(ni\s+)?levant\w+/i, selfNegating: true },
+      { regex: /necesito\s+(que\s+)?(alguien\s+)?me\s+ayude\s+(para|con)\s+todo/i },
+      { regex: /incapacitad\w*/i },
+      { regex: /(pierna|brazo|mano)[^.;]{0,20}no\s+responde/i, selfNegating: true }
     ]
   }
 ];
@@ -284,7 +312,7 @@ export function assess(utterance) {
         if (pattern.validate && !pattern.validate(match)) continue;
         if (!pattern.selfNegating && isNegatedAt(clause.normalized, match.index)) continue;
         const trigger = clause.text.slice(match.index, match.index + match[0].length).trim();
-        fired.push({ id: rule.id, level: rule.level, label: rule.label, trigger });
+        fired.push({ id: rule.id, level: rule.level, label: rule.label, domain: rule.domain, trigger });
         break ruleLoop;
       }
     }
@@ -308,6 +336,26 @@ export function assess(utterance) {
   };
 }
 
+// ---- Escalamiento por acumulación (docs/DECISIONS.md, decisión 6) --------
+//
+// mergeAssessments() combinaba hallazgos pero nunca los sumaba -- tomaba el
+// máximo y ya. Contra el ground truth oficial, varios de los 12 casos rojo
+// tienen fiebre por debajo del umbral individual (38.5°) pero junto con
+// dolor alto, herida con drenaje o declive de movilidad simultáneos. Su
+// "rojo" viene de la combinación, no de un signo aislado -- como un sistema
+// de alerta temprana clínico real, que puntúa y escala por acumulación.
+//
+// N=2 -- dos hallazgos ámbar en dominios clínicos DISTINTOS (no el mismo
+// dominio dos veces) escalan a rojo -- no es un umbral afinado a ojo: sobre
+// los 320 casos×capa del dataset oficial, NINGÚN caso verde ni amarillo
+// alcanza nunca 2 dominios ámbar simultáneos; solo los rojos lo hacen (8 de
+// 12). N=3 no se probó "por si acaso": se midió, y ningún caso del dataset
+// -- ni siquiera los rojo -- llega nunca a 3 dominios, así que N=3 mide
+// exactamente igual que no tener acumulación. Ver docs/DECISIONS.md,
+// decisión 6, para la tabla completa y el riesgo de generalizar desde 320
+// casos sintéticos.
+const UMBRAL_ACUMULACION = 2;
+
 /** Merge per-utterance assessments into the state of the whole call. */
 export function mergeAssessments(assessments) {
   const findings = [];
@@ -320,6 +368,28 @@ export function mergeAssessments(assessments) {
       if (seen.has(finding.id)) continue;
       seen.add(finding.id);
       findings.push(finding);
+    }
+  }
+
+  // El conteo de dominios es por HALLAZGO, no por turno: dos dominios
+  // distintos mencionados en el mismo turno cuentan igual que en dos
+  // turnos separados. Ya rojo por una regla individual no necesita
+  // "ayuda" de la acumulación -- RED-ACCUMULATION nunca aparece junto a
+  // un hallazgo rojo individual, sería redundante y confundiría el
+  // registro (dos motivos para lo mismo).
+  if (level !== 'red') {
+    const dominiosAmbar = new Set(
+      findings.filter(f => f.level === 'amber' && f.domain).map(f => f.domain)
+    );
+    if (dominiosAmbar.size >= UMBRAL_ACUMULACION) {
+      level = 'red';
+      findings.push({
+        id: 'RED-ACCUMULATION',
+        level: 'red',
+        label: 'Escalamiento por acumulación de hallazgos ámbar',
+        domain: null,
+        trigger: `${dominiosAmbar.size} dominios: ${[...dominiosAmbar].sort().join(', ')}`
+      });
     }
   }
 
