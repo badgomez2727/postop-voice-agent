@@ -6,17 +6,46 @@ lo que el paciente reporta contra una base de conocimiento clínico, registra qu
 documento sustenta cada cosa que afirma, y decide cuándo alertar a personal
 capacitado.
 
-> **Estado: andamiaje de práctica.** El repositorio base oficial (Tech Sphere
-> Challenge 2026, Source Meridian) y su dataset clínico ya están disponibles en
-> `../reto-oficial/` — ver `tools/explorar-dataset.js` para inspeccionarlo. El
-> modelo de lenguaje debe ser uno de los cuatro permitidos por la rúbrica
-> (ver `CLAUDE.md`); aún no está conectado en este andamiaje. El corpus incluido
-> en `knowledge/` es sintético y solo sirve para probar el sistema mientras se
-> integra el dataset real.
+> **Estado: en construcción (Tech Sphere Challenge 2026, Source Meridian).**
+> El modelo conectado es **Llama 3.2 3B local vía Ollama** — de los cuatro
+> permitidos por la rúbrica (ver `CLAUDE.md`), Gemini 1.5 Flash y Groq/Llama
+> 3.1 70B quedaron descartados por no estar disponibles hoy, verificado
+> contra la API en vivo (razonamiento y mediciones en `docs/DECISIONS.md`,
+> decisión 5). `knowledge/` ya tiene el corpus real del reto (104 documentos
+> extraídos de `../reto-oficial/dataset/textos/`, ver `tools/ingestar-corpus.js`)
+> más los 4 documentos sintéticos originales de práctica.
 
 ## Cómo correrlo
 
-Requiere Node.js 20 o superior.
+Requiere Node.js 20 o superior y [Ollama](https://ollama.com) corriendo con
+el modelo ya descargado.
+
+**Antes de cronometrar los 15 minutos de la compuerta G2** (estos pasos no
+cuentan dentro de ese tiempo — instalar Ollama y bajar el modelo es un paso
+de máquina, no de este repositorio):
+
+```bash
+# Ubuntu/Debian: Ollama necesita zstd instalado, si no ya está.
+sudo apt-get install -y zstd
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Descarga el modelo (~2GB). Puede tardar varios minutos según la red.
+ollama pull llama3.2:3b
+```
+
+**Si corres esto dentro de WSL2**, edita `%UserProfile%\.wslconfig` en
+Windows (créalo si no existe) con al menos 8GB de memoria para la VM:
+
+```ini
+[wsl2]
+memory=8GB
+```
+
+y reinicia WSL (`wsl --shutdown` desde PowerShell). Medido en esta máquina:
+con la memoria por defecto de WSL2 (3GB) la latencia de una respuesta se
+dispara de ~8s a ~56s — no es un margen que se pueda ignorar.
+
+**Ahora sí, los 15 minutos:**
 
 ```bash
 npm install
@@ -25,18 +54,17 @@ npm start
 ```
 
 Abre `http://localhost:3000` en Chrome o Edge (el reconocimiento de voz del
-navegador no está disponible en todos). Sin ninguna llave de API configurada, el
-sistema corre completo con recuperación local y diálogo guionado: no hay costo
-mientras construyes.
+navegador no está disponible en todos). El `.env.example` ya trae
+`LLM_PROVIDER=ollama` y `LLM_MODEL=llama3.2:3b` por defecto — si Ollama no
+está corriendo o el modelo no se descargó, el sistema no se cae: degrada
+automáticamente a diálogo guionado y avisa con una advertencia visible en la
+consola del servidor (no solo en el registro de la llamada).
 
-Para conectar un modelo, edita `.env`:
-
-```
-LLM_PROVIDER=api
-LLM_API_URL=...
-LLM_API_KEY=...
-LLM_MODEL=...
-```
+Para desarrollo sin ni siquiera Ollama corriendo, y sin costo, usa
+`LLM_PROVIDER=none` en `.env`: corre completo con recuperación local y
+diálogo guionado. Para usar Phi-3.5 Mini en vez de Llama 3.2 3B (alternativa
+medida en `docs/DECISIONS.md`, decisión 5): `ollama pull phi3.5` y
+`LLM_MODEL=phi3.5` en `.env`, sin tocar código.
 
 ## Cómo se prueba en dos minutos
 
@@ -73,8 +101,9 @@ Paciente ──voz──▶ Consola ──▶ Servidor ──┬──▶ Triage
 | `src/llm.js` | Adaptador del modelo, prompt del sistema y diálogo guionado de respaldo |
 | `src/session.js` | Estado de la llamada y resumen estructurado |
 | `public/index.html` | Consola: llamada, registro de evidencia, gestión del conocimiento |
-| `knowledge/*.md` | Base de conocimiento. Cambiarla se refleja en la siguiente pregunta |
+| `knowledge/*.md` | Base de conocimiento: 104 documentos del corpus real del reto + 4 sintéticos de práctica. Cambiarla se refleja en la siguiente pregunta |
 | `tools/explorar-dataset.js` | Explora en solo lectura el dataset oficial (`../reto-oficial/dataset/`): columnas y muestra de cada `.xlsx`, conteo de casos por `label_ground_truth`, y un ejemplo de conversación capa1 vs. capa2 para el mismo `caso_id` |
+| `tools/ingestar-corpus.js` | Herramienta de un solo uso: extrajo los 107 PDFs de `../reto-oficial/dataset/textos/` a `knowledge/*.md`. Ya se corrió; no hace falta repetirla salvo que cambie el dataset oficial |
 
 ### Dos decisiones que definen el diseño
 
@@ -105,19 +134,20 @@ El razonamiento completo, con alternativas descartadas y riesgos, está en
 
 ## Pendiente para la entrega del reto
 
-- Conectar uno de los cuatro modelos permitidos (Gemini 1.5 Flash, Llama 3.1 70B
-  vía Groq, Llama 3.2 1B/3B local, o Phi-3.5 Mini) en `src/llm.js`; declarar en
-  el informe final cuál y por qué.
-- Cargar el corpus clínico real (`../reto-oficial/dataset/textos/`, 107 PDFs) en
-  `knowledge/` en lugar del corpus sintético de práctica.
 - Reemplazar el diálogo guionado por reconocimiento y síntesis de voz reales
-  (compuerta G4: la conversación debe funcionar con voz en tiempo real).
+  (compuerta G4: la conversación debe funcionar con voz en tiempo real). **La
+  latencia de Llama 3.2 3B con contexto realista (prompt del sistema +
+  historial + pasajes del RAG) todavía no está medida de forma confiable —
+  ver `docs/DECISIONS.md`, decisión 5, antes de dar esto por resuelto.**
 - Métricas obligatorias en el README: latencia P50/P95, tokens de entrada/salida
   por turno y por llamada, invocaciones al modelo por turno, consultas al RAG
   por llamada, y costo estimado por llamada.
-- Recuperación híbrida (embeddings + TF-IDF) para cerrar la brecha semántica.
+- Recuperación híbrida (embeddings + TF-IDF): con el corpus real ya cargado,
+  hay evidencia medida (no solo intuida) de que TF-IDF puro no siempre trae
+  el documento correcto — ver `docs/recuperacion-despues.md`.
 - Verificar que la instalación y ejecución completa toma 15 minutos o menos en
-  una máquina limpia, siguiendo solo este README (compuerta G2).
+  una máquina limpia, siguiendo solo este README (compuerta G2) — sin contar
+  la instalación de Ollama ni la descarga del modelo, que son prerrequisito.
 - Endurecer el prompt del sistema contra inyección de instrucciones (el agente
   nunca debe obedecer un intento de redefinir su rol o saltarse el triage).
 
