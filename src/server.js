@@ -85,7 +85,13 @@ app.post('/api/calls/:id/turns', async (req, res) => {
     let ragQueries = 0;
 
     const assessment = assess(utterance);
-    const evidence = retrieve(utterance, { k: 3 });
+    // k: 1, no 3 -- ver src/llm.js: procesar el contexto de entrada, no
+    // generar la salida, es el cuello de botella medido con el modelo
+    // local (docs/DECISIONS.md, decisión 5). Un pasaje menos es contexto
+    // que nunca entra al prompt en las invocaciones que sí llaman al
+    // modelo. El registro de evidencia sigue mostrando lo que rag.js
+    // considera más relevante, solo que ahora es uno, no tres.
+    const evidence = retrieve(utterance, { k: 1 });
     ragQueries += 1;
     const reply = await generateTurn({ session, utterance, assessment, evidence });
 

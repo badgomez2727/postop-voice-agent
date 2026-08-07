@@ -123,23 +123,90 @@ la respuesta: ~8 tokens/s de prefill en esta CPU. Cuantos más tokens entren
 al modelo — system prompt, historial acumulado, pasajes del RAG — más lento
 el turno, independientemente de qué tan corta sea la respuesta.
 
-**Esto pone en riesgo la compuerta G4** (conversación de voz en tiempo real)
-tal como está hoy. No es un ajuste fino pendiente: a esta velocidad, una
-llamada real con varios turnos y contexto acumulado no es utilizable en
-vivo. Sigue sin resolverse — ver "Pendientes antes de entregar" — y las
-alternativas a evaluar, en orden de esfuerzo, son: recortar el contexto que
-se le pasa al modelo (menos pasajes de evidencia, pasajes más cortos —
-converge con el trabajo ya hecho en `src/rag.js` para no traer fragmentos
-irrelevantes ni voluminosos), medir Llama 3.2 **1B** en vez de 3B (menos
-parámetros, prefill más barato, a costa de más alucinación — tensión directa
-con la regla 6), o aceptar la latencia y compensarla con feedback sonoro
-mientras el modelo procesa, si el tiempo no alcanza para más.
+**Esto ponía en riesgo la compuerta G4** (conversación de voz en tiempo real)
+tal como estaba entonces. Tres mitigaciones, implementadas y medidas:
 
-**Con dos semanas más.** Medir Llama 3.2 1B en la misma máquina, bajo las
-mismas condiciones de contexto realista (no prompt corto) que expusieron el
-problema real. Si Groq o Gemini reaparecen o el reto actualiza la lista
-permitida antes del 10 de agosto, seguirían siendo preferibles por latencia
-— pero no es algo que se pueda dar por sentado a esta altura.
+### 6a. Enrutamiento selectivo — no invocar el modelo en la mayoría de los turnos
+
+Las preguntas del guion clínico (`SCRIPT` en `src/llm.js`) son fijas y
+correctas; `scriptedReply()` ya las resuelve en milisegundos. El modelo
+ahora se reserva para lo que el guion no puede resolver: respuesta ambigua
+(`assessment.needsClarification`), o pregunta del paciente fuera de guion
+que el RAG sí puede fundamentar (hay evidencia recuperada). Un caso rojo
+**nunca** invoca el modelo — el mensaje de escalamiento es fijo, ya está
+probado, y en una emergencia la velocidad de la respuesta importa tanto
+como su contenido. Ver `necesitaModelo()` en `src/llm.js` para el detalle
+completo de la regla.
+
+Medido contra el servidor real, `LLM_PROVIDER=ollama`:
+
+| Turno | Antes (siempre invocaba) | Después (enrutado) |
+|---|---|---|
+| Caso rojo | 104-215s | **7 ms** |
+| Respuesta de guion normal | 104-215s | **9 ms** |
+
+`session.js` ahora agrega `metrics.engineCounts` en el resumen de la llamada
+(`scripted` / `scripted-routed` / `llm` / `scripted-fallback`) — la prueba
+de que el enrutamiento está funcionando, no solo una afirmación.
+
+### 6b. Contexto recortado en las invocaciones que sí ocurren
+
+- `k: 1` en vez de `k: 3` (`src/server.js`) — un pasaje del RAG, no tres.
+- Cada pasaje truncado a 400 caracteres antes de entrar al prompt
+  (`EVIDENCIA_MAX_CARACTERES`, `src/llm.js`) — sin tocar cómo `rag.js`
+  fragmenta o puntúa, solo cuánto de un pasaje ya elegido ve el modelo.
+- Historial limitado a los últimos 3 intercambios (`HISTORIAL_MAX_INTERCAMBIOS`),
+  no toda la llamada acumulada.
+- System prompt comprimido en redacción, sin quitar ninguna de las 6 reglas
+  (356 → 282 tokens en la misma prueba, medido).
+
+### 6c. Medición de Llama 3.2 1B con carga real
+
+Con el pipeline recortado completo (system prompt comprimido + 1 pasaje
+truncado + historial corto), vía `/api/chat` de Ollama (desglose nativo):
+
+| Modelo | Escenario | Tokens entrada | Latencia total |
+|---|---|---|---|
+| Llama 3.2 3B | Contexto realista (antes de 6a/6b) | 1159-1488 | 104-215s |
+| Llama 3.2 1B | Contexto recortado (6b), pregunta fuera de guion con evidencia | 501 | 34.9s |
+| Llama 3.2 1B | Contexto recortado, sin evidencia, modelo ya caliente | 282 | **4.7-6.4s** |
+
+1B es real y sustancialmente más rápido — pero **con un problema de
+confiabilidad de formato que 3B no mostró con la misma severidad**: de 3
+invocaciones idénticas con el mismo prompt, 1B produjo (1) el JSON pedido
+correctamente, (2) una cadena de texto entre comillas en vez de un objeto
+— `JSON.parse()` la acepta porque una cadena entre comillas ES JSON válido,
+pero no tiene forma, así que el código que espera `.reply` fallaría en
+silencio, sin pasar por la degradación a guion porque el parseo "tuvo
+éxito" — y (3) texto plano sin comillas, que si rompe el `JSON.parse()` y
+sí degrada correctamente. El caso (2) es un hallazgo nuevo, no cubierto por
+`degradeToScripted()` tal como está: **valida que el JSON parsea, no que
+tiene la forma esperada.** Adoptar 1B como modelo activo requeriría cerrar
+ese hueco primero (validar `typeof parsed.reply === 'string'` antes de
+usarlo), no es un cambio de una sola línea en `LLM_MODEL`.
+
+Aparte del riesgo de forma, en una prueba aislada 1B también generó una
+respuesta que sonaba a recomendar ibuprofeno para el dolor sin que el
+contexto recuperado lo respaldara — exactamente el tipo de alucinación que
+la regla 6 de CLAUDE.md señala como la falla que más pesa. No se decidió
+cambiar de modelo hoy; se decidió que hace falta medir esto con más
+volumen antes de decidirlo.
+
+**No se cambió el modelo activo.** Llama 3.2 3B sigue siendo `LLM_MODEL`
+por defecto — la ganancia de velocidad de 6a y 6b ya reduce drásticamente
+cuántos turnos pagan el costo de invocar al modelo, que era el riesgo
+principal. Cambiar a 1B es una decisión aparte, con su propio costo (cerrar
+el hueco de validación de forma) y su propio riesgo (más alucinación
+observada, no solo teórica) — pendiente de decidir explícitamente, no
+adoptada por default.
+
+**Con dos semanas más.** Cerrar el hueco de validación de forma en
+`callChatCompletions()` (no solo `JSON.parse()`, validar las claves
+esperadas) antes de considerar 1B en serio. Medir la curva completa
+enrutamiento+recorte+1B contra un volumen de turnos mayor a 3 muestras.
+Si Groq o Gemini reaparecen o el reto actualiza la lista permitida antes
+del 10 de agosto, seguirían siendo preferibles por latencia — pero no es
+algo que se pueda dar por sentado a esta altura.
 
 ## 6. Escalamiento por acumulación de hallazgos ámbar
 
@@ -222,12 +289,14 @@ dolor+vía_oral) en vez de ser un número único.
 
 ## Pendientes antes de entregar
 
-- [ ] **Urgente — riesgo directo a G4.** Latencia de turno completo (contexto
-      realista, no prompt corto) medida en 104-215s con Llama 3.2 3B — ver
-      decisión 5. Investigar: recortar contexto (system prompt + evidencia
-      del RAG), medir Llama 3.2 1B, o aceptar y compensar con feedback
-      sonoro. No dar la conexión del modelo por "resuelta" solo porque
-      responde — tiene que responder a tiempo para una llamada de voz.
+- [x] **Riesgo a G4 mitigado, no eliminado.** Enrutamiento selectivo (la
+      mayoría de los turnos ya no invocan el modelo, 7-9ms) + contexto
+      recortado en los que sí lo invocan — ver decisión 6a/6b. Llama 3.2 1B
+      medido con carga real (decisión 6c): mucho más rápido pero con un
+      hueco de validación de forma en `callChatCompletions()` que hay que
+      cerrar antes de adoptarlo — no cambiado hoy. Pendiente: medir la
+      latencia real de un turno que SÍ invoca el modelo (pregunta fuera de
+      guion) con volumen suficiente para P50/P95, no 1-3 muestras.
 - [x] Elegir entre Llama 3.2 1B/3B y Phi-3.5 Mini para la entrega (ver
       decisión 5): Llama 3.2 3B, por consistencia (desviación <1s vs. ~5s de
       rango en Phi-3.5 — la rúbrica pide P95).

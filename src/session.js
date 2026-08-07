@@ -97,6 +97,17 @@ export function summarize(session) {
     // sobre estos mismos números, cuando haya volumen suficiente de llamadas.
     metrics: {
       perTurn: session.metrics,
+      // Por motor: cuántos turnos resolvió el guion sin tocar al modelo
+      // (scripted / scripted-routed), cuántos sí lo invocaron (llm), y
+      // cuántos cayeron a guion porque el modelo falló (scripted-fallback).
+      // 'scripted-routed' es la señal directa de cuánto está ahorrando el
+      // enrutamiento selectivo (src/llm.js, necesitaModelo()) -- sin esto,
+      // "el modelo no se invoca casi nunca" es una afirmación sin cómo
+      // verificarla desde el resumen de la llamada.
+      engineCounts: session.turns.reduce((acc, turn) => {
+        acc[turn.engine] = (acc[turn.engine] || 0) + 1;
+        return acc;
+      }, {}),
       totals: session.metrics.reduce(
         (acc, m) => ({
           modelInvocations: acc.modelInvocations + (m.modelInvocations || 0),
