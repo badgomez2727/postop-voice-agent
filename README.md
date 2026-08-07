@@ -6,11 +6,13 @@ lo que el paciente reporta contra una base de conocimiento clínico, registra qu
 documento sustenta cada cosa que afirma, y decide cuándo alertar a personal
 capacitado.
 
-> **Estado: andamiaje de práctica.** El repositorio base oficial, el dataset
-> clínico y el modelo único obligatorio del reto se entregan el 7 de agosto. Este
-> proyecto existe para tener la arquitectura, la interfaz y los flujos resueltos
-> antes de esa fecha. El corpus incluido es sintético y solo sirve para probar el
-> sistema.
+> **Estado: andamiaje de práctica.** El repositorio base oficial (Tech Sphere
+> Challenge 2026, Source Meridian) y su dataset clínico ya están disponibles en
+> `../reto-oficial/` — ver `tools/explorar-dataset.js` para inspeccionarlo. El
+> modelo de lenguaje debe ser uno de los cuatro permitidos por la rúbrica
+> (ver `CLAUDE.md`); aún no está conectado en este andamiaje. El corpus incluido
+> en `knowledge/` es sintético y solo sirve para probar el sistema mientras se
+> integra el dataset real.
 
 ## Cómo correrlo
 
@@ -72,6 +74,7 @@ Paciente ──voz──▶ Consola ──▶ Servidor ──┬──▶ Triage
 | `src/session.js` | Estado de la llamada y resumen estructurado |
 | `public/index.html` | Consola: llamada, registro de evidencia, gestión del conocimiento |
 | `knowledge/*.md` | Base de conocimiento. Cambiarla se refleja en la siguiente pregunta |
+| `tools/explorar-dataset.js` | Explora en solo lectura el dataset oficial (`../reto-oficial/dataset/`): columnas y muestra de cada `.xlsx`, conteo de casos por `label_ground_truth`, y un ejemplo de conversación capa1 vs. capa2 para el mismo `caso_id` |
 
 ### Dos decisiones que definen el diseño
 
@@ -102,12 +105,21 @@ El razonamiento completo, con alternativas descartadas y riesgos, está en
 
 ## Pendiente para la entrega del reto
 
-- Conexión al dataset clínico vía Delta Share (Databricks).
-- Modelo único obligatorio, según la ficha técnica del 7 de agosto.
-- Métricas en el README: latencia P50/P95, tokens y costo por llamada.
+- Conectar uno de los cuatro modelos permitidos (Gemini 1.5 Flash, Llama 3.1 70B
+  vía Groq, Llama 3.2 1B/3B local, o Phi-3.5 Mini) en `src/llm.js`; declarar en
+  el informe final cuál y por qué.
+- Cargar el corpus clínico real (`../reto-oficial/dataset/textos/`, 107 PDFs) en
+  `knowledge/` en lugar del corpus sintético de práctica.
+- Reemplazar el diálogo guionado por reconocimiento y síntesis de voz reales
+  (compuerta G4: la conversación debe funcionar con voz en tiempo real).
+- Métricas obligatorias en el README: latencia P50/P95, tokens de entrada/salida
+  por turno y por llamada, invocaciones al modelo por turno, consultas al RAG
+  por llamada, y costo estimado por llamada.
 - Recuperación híbrida (embeddings + TF-IDF) para cerrar la brecha semántica.
-- Verificar que la instalación y ejecución completa toma menos de 15 minutos en
-  una máquina limpia.
+- Verificar que la instalación y ejecución completa toma 15 minutos o menos en
+  una máquina limpia, siguiendo solo este README (compuerta G2).
+- Endurecer el prompt del sistema contra inyección de instrucciones (el agente
+  nunca debe obedecer un intento de redefinir su rol o saltarse el triage).
 
 ## Datos y alcance
 

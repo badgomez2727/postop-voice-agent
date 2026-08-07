@@ -14,7 +14,12 @@ export function createSession({ patientAlias = 'Paciente de prueba', procedure =
     turns: [],
     history: [],
     assessments: [],
-    coveredTopics: []
+    coveredTopics: [],
+    // Métricas crudas, una entrada por turno conversacional (no incluye el
+    // saludo de apertura, que no pasa por el modelo ni por el RAG). Todavía
+    // no se agregan a P50/P95 aquí -- eso es trabajo aparte sobre estos
+    // datos, no algo que instrumentar en el camino caliente de la llamada.
+    metrics: []
   };
   sessions.set(id, session);
   return session;
@@ -26,7 +31,7 @@ export function getSession(id) {
   return session;
 }
 
-export function recordTurn(session, { utterance, reply, assessment, evidence, engine }) {
+export function recordTurn(session, { utterance, reply, assessment, evidence, engine, metrics }) {
   session.turns.push({
     at: new Date().toISOString(),
     patient: utterance,
@@ -39,12 +44,14 @@ export function recordTurn(session, { utterance, reply, assessment, evidence, en
       position,
       relevance
     })),
-    grounded: Boolean(reply.groundedInContext)
+    grounded: Boolean(reply.groundedInContext),
+    metrics
   });
 
   session.history.push({ role: 'user', content: utterance });
   session.history.push({ role: 'assistant', content: reply.reply });
   session.assessments.push(assessment);
+  session.metrics.push(metrics);
 
   if (reply.askedAbout && !session.coveredTopics.includes(reply.askedAbout)) {
     session.coveredTopics.push(reply.askedAbout);
@@ -85,6 +92,20 @@ export function summarize(session) {
       citedSources,
       turnsWithoutSupportingSource: ungroundedTurns.length,
       ungroundedTurnTimestamps: ungroundedTurns
+    },
+    // Datos crudos, sin agregar a P50/P95 todavía -- eso se calcula aparte,
+    // sobre estos mismos números, cuando haya volumen suficiente de llamadas.
+    metrics: {
+      perTurn: session.metrics,
+      totals: session.metrics.reduce(
+        (acc, m) => ({
+          modelInvocations: acc.modelInvocations + (m.modelInvocations || 0),
+          ragQueries: acc.ragQueries + (m.ragQueries || 0),
+          tokensIn: m.tokensIn == null ? acc.tokensIn : acc.tokensIn + m.tokensIn,
+          tokensOut: m.tokensOut == null ? acc.tokensOut : acc.tokensOut + m.tokensOut
+        }),
+        { modelInvocations: 0, ragQueries: 0, tokensIn: 0, tokensOut: 0 }
+      )
     },
     transcript: session.turns.map(turn => ({
       at: turn.at,

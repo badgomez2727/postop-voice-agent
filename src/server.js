@@ -77,18 +77,35 @@ app.post('/api/calls/:id/turns', async (req, res) => {
     const utterance = (req.body.utterance || '').trim();
     if (!utterance) throw new Error('Send what the patient said.');
 
+    // La latencia que importa para voz es esta: desde que la transcripción
+    // del paciente está lista hasta que la respuesta del agente lo está.
+    // No incluye el tiempo de reconocimiento de voz (fuera de este
+    // servidor) ni el de síntesis (ocurre después de esta respuesta).
+    const turnStartedAt = Date.now();
+    let ragQueries = 0;
+
     const assessment = assess(utterance);
     const evidence = retrieve(utterance, { k: 3 });
+    ragQueries += 1;
     const reply = await generateTurn({ session, utterance, assessment, evidence });
 
-    recordTurn(session, { utterance, reply, assessment, evidence, engine: reply.engine });
+    const metrics = {
+      latencyMs: Date.now() - turnStartedAt,
+      tokensIn: reply.tokensIn ?? null,
+      tokensOut: reply.tokensOut ?? null,
+      modelInvocations: reply.modelInvocations ?? 0,
+      ragQueries
+    };
+
+    recordTurn(session, { utterance, reply, assessment, evidence, engine: reply.engine, metrics });
 
     res.json({
       agent: reply.reply,
       engine: reply.engine,
       triage: assessment,
       evidence,
-      grounded: Boolean(reply.groundedInContext)
+      grounded: Boolean(reply.groundedInContext),
+      metrics
     });
   } catch (error) {
     fail(res, error);
