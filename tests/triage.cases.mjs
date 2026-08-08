@@ -453,5 +453,83 @@ export const cases = [
     category: 'amber/dolor',
     utterance: 'El dolor no se me calma ni descansando.',
     expect: { level: 'amber', findingIds: ['AMBER-PAIN'] }
+  },
+
+  // ---- RED-PSYCH: riesgo psicosocial (ideación suicida, desesperanza) ------
+  // Encontrada revisando 7 llamadas reales: "estoy muy deprimido" y luego
+  // "sí no tengo ganas de vivir" dieron level: none a ambos turnos. Los 7
+  // patrones son los que se identificaron en esa revisión, no inventados.
+  {
+    id: 'red-psych-01',
+    category: 'red/psicosocial',
+    utterance: 'No tengo ganas de vivir.',
+    expect: { level: 'red', findingIds: ['RED-PSYCH'] }
+  },
+  {
+    id: 'red-psych-02-transcripcion-real',
+    category: 'red/psicosocial',
+    // La frase exacta del turno que el sistema dejó pasar en la revisión.
+    utterance: 'Sí, no tengo ganas de vivir.',
+    expect: { level: 'red', findingIds: ['RED-PSYCH'] }
+  },
+  {
+    id: 'red-psych-03',
+    category: 'red/psicosocial',
+    utterance: 'Me quiero morir.',
+    expect: { level: 'red', findingIds: ['RED-PSYCH'] }
+  },
+  {
+    id: 'red-psych-04',
+    category: 'red/psicosocial',
+    utterance: 'Ya no aguanto más, de verdad.',
+    expect: { level: 'red', findingIds: ['RED-PSYCH'] }
+  },
+  {
+    id: 'red-psych-05',
+    category: 'red/psicosocial',
+    utterance: 'Solo quiero acabar con todo.',
+    expect: { level: 'red', findingIds: ['RED-PSYCH'] }
+  },
+  {
+    id: 'red-psych-06',
+    category: 'red/psicosocial',
+    utterance: 'Ya para qué sigo, si nada mejora.',
+    expect: { level: 'red', findingIds: ['RED-PSYCH'] }
+  },
+  {
+    id: 'red-psych-07',
+    category: 'red/psicosocial',
+    utterance: 'La verdad prefiero morirme antes que seguir así.',
+    expect: { level: 'red', findingIds: ['RED-PSYCH'] }
+  },
+  {
+    id: 'red-psych-negacion-real-01',
+    category: 'red/psicosocial',
+    // "me quiero morir" no es selfNegating a propósito -- si el paciente lo
+    // niega explícitamente, la negación es información real, no ruido, y
+    // debe respetarse.
+    utterance: 'No me quiero morir, gracias a Dios estoy tranquila.',
+    expect: { level: 'none' }
+  },
+  {
+    id: 'red-psych-muletilla-no-previo-01',
+    category: 'red/psicosocial',
+    // "no tengo ganas de vivir" SÍ es selfNegating: un "no" de muletilla
+    // antes en la misma cláusula no debe suprimir el hallazgo real.
+    utterance: 'No, no tengo ganas de vivir.',
+    expect: { level: 'red', findingIds: ['RED-PSYCH'] }
+  },
+  {
+    id: 'red-psych-dolor-severo-no-suicida-01',
+    category: 'red/psicosocial',
+    // Riesgo de falso positivo aceptado a propósito (ver comentario junto a
+    // RED-PSYCH en src/triage.js): "ya no aguanto más" puede describir
+    // dolor físico puro, sin intención suicida. Se documenta el
+    // comportamiento actual -- escala igual -- no se intenta distinguir los
+    // dos casos con un patrón más estrecho, porque la regla 6 de CLAUDE.md
+    // pesa más un riesgo psicosocial no detectado que una escalada de más
+    // sobre dolor severo.
+    utterance: 'El dolor está horrible, ya no aguanto más.',
+    expect: { level: 'red', findingIds: ['RED-PSYCH'] }
   }
 ];

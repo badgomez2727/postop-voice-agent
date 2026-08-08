@@ -103,6 +103,27 @@ const SCRIPT = [
 ];
 
 function scriptedReply(session, assessment, evidence) {
+  // RED-PSYCH necesita su propia respuesta, no la genérica de escalamiento.
+  // "Lo que me está contando necesita que lo valore alguien del equipo ya
+  // mismo" es la frase correcta para sangrado o dificultad respiratoria --
+  // ante ideación suicida suena administrativa, no reconoce lo que la
+  // persona acaba de decir, y no le da a nadie que esté en crisis un
+  // recurso inmediato mientras espera que la contacten. Encontrado
+  // revisando 7 llamadas reales: el sistema respondía con el guion de
+  // cierre a "sí no tengo ganas de vivir".
+  if (assessment.findings.some(f => f.id === 'RED-PSYCH')) {
+    return {
+      reply:
+        'Lo que me acaba de contar es muy serio, y le agradezco que me lo haya dicho -- no está solo en esto. ' +
+        'Voy a reportarlo ahora mismo para que alguien del equipo lo contacte de inmediato. ' +
+        'Si en cualquier momento siente que puede hacerse daño, llame ya a la Línea 106 de salud mental, ' +
+        'o a la línea de salud mental de su EPS. No voy a colgar, sigo aquí con usted.',
+      askedAbout: 'riesgo_psicosocial',
+      usedSources: evidence.map(e => e.sourceId),
+      groundedInContext: evidence.length > 0
+    };
+  }
+
   if (assessment.escalate) {
     return {
       reply: 'Lo que me está contando necesita que lo valore alguien del equipo ya mismo. No cuelgue, voy a reportarlo de inmediato. Si empeora antes de que lo contacten, vaya a urgencias.',

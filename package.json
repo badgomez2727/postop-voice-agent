@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env src/server.js",
     "dev": "node --env-file-if-exists=.env --watch src/server.js",
-    "test": "node tests/run-triage-tests.mjs && node tests/run-accumulation-tests.mjs && node tests/run-llm-shape-tests.mjs"
+    "test": "node tests/run-triage-tests.mjs && node tests/run-accumulation-tests.mjs && node tests/run-llm-shape-tests.mjs && node tests/run-llm-scripted-tests.mjs"
   },
   "license": "MIT",
   "dependencies": {

@@ -173,6 +173,44 @@ const RULES = [
     ]
   },
   {
+    // Encontrada revisando 7 llamadas reales: un paciente dijo "estoy muy
+    // deprimido" y, un turno después, "sí no tengo ganas de vivir" -- el
+    // sistema devolvió level: none a ambos y siguió con el guion de cierre.
+    // No existía ninguna regla de dominio psicosocial. "Prioridad sobre
+    // cualquier otro hallazgo" no necesita un mecanismo especial: al ser
+    // nivel rojo, ya gana sobre cualquier ámbar por el orden de niveles que
+    // usan assess()/mergeAssessments() -- lo que hacía falta es que la
+    // regla exista.
+    //
+    // Tres de los siete patrones (no tengo ganas de vivir / no quiero
+    // seguir / ya no aguanto más) llevan "no" como parte integral de la
+    // frase de alarma, igual que "no puedo respirar" -- selfNegating: true,
+    // para que un "no" suelto antes en la misma cláusula (una muletilla,
+    // "no, no tengo ganas de vivir") no la suprima por accidente. Los otros
+    // cuatro sí admiten negación real ("no me quiero morir" es una
+    // afirmación de que NO hay riesgo, y debe respetarse como tal).
+    //
+    // "ya no aguanto más" también puede describir dolor físico puro ("ya no
+    // aguanto más el dolor") sin ninguna intención suicida detrás -- riesgo
+    // de falso positivo real, aceptado a propósito: la regla 6 de
+    // CLAUDE.md pesa mucho más un riesgo psicosocial no detectado que una
+    // escalada de más sobre dolor severo. Ver tests/triage.cases.mjs,
+    // red-psych-dolor-severo-no-suicida-01, para el caso documentado.
+    id: 'RED-PSYCH',
+    level: 'red',
+    domain: 'psicosocial',
+    label: 'Riesgo psicosocial: ideación suicida o desesperanza',
+    patterns: [
+      { regex: /no\s+tengo\s+ganas\s+de\s+vivir/i, selfNegating: true },
+      { regex: /no\s+quiero\s+segu\w+/i, selfNegating: true },
+      { regex: /para\s+qu[eé]\s+sigo/i },
+      { regex: /me\s+quiero\s+morir/i },
+      { regex: /acabar\s+con\s+todo/i },
+      { regex: /ya\s+no\s+aguanto\s+m[aá]s/i, selfNegating: true },
+      { regex: /prefiero\s+morir\w*/i }
+    ]
+  },
+  {
     id: 'RED-FEVER-HIGH',
     level: 'red',
     label: 'Fiebre alta confirmada (38.5° o más)',
