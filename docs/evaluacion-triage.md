@@ -1,6 +1,6 @@
 # Evaluación de `src/triage.js` contra el ground truth oficial
 
-Fecha: 2026-08-07. Corpus de evaluación: `data/dataset_final.json` +
+Fecha: 2026-08-08. Corpus de evaluación: `data/dataset_final.json` +
 `data/trayectorias_postop_silver.json`, 160 casos (verde:
 123, amarillo: 25, rojo:
 12). `src/triage.js` sin modificar.
@@ -59,35 +59,35 @@ es la métrica que importa aquí.
 
 | Variante | Capa | Recall rojo | Exactitud |
 |---|---|---|---|
-| baseline | capa1_limpia | 1/12 (8.3%) | 111/160 (69.4%) |
-| baseline | capa2_ruidosa | 1/12 (8.3%) | 112/160 (70.0%) |
-| baseline | combinado | 2/24 (8.3%) | 223/320 (69.7%) |
-| con contexto (prototipo) | capa1_limpia | 1/12 (8.3%) | 107/160 (66.9%) |
-| con contexto (prototipo) | capa2_ruidosa | 1/12 (8.3%) | 109/160 (68.1%) |
-| con contexto (prototipo) | combinado | 2/24 (8.3%) | 216/320 (67.5%) |
+| baseline | capa1_limpia | 6/12 (50.0%) | 123/160 (76.9%) |
+| baseline | capa2_ruidosa | 4/12 (33.3%) | 120/160 (75.0%) |
+| baseline | combinado | 10/24 (41.7%) | 243/320 (75.9%) |
+| con contexto (prototipo) | capa1_limpia | 6/12 (50.0%) | 119/160 (74.4%) |
+| con contexto (prototipo) | capa2_ruidosa | 4/12 (33.3%) | 117/160 (73.1%) |
+| con contexto (prototipo) | combinado | 10/24 (41.7%) | 236/320 (73.8%) |
 
 ## Patrones de falla identificados (baseline)
 
-Agregado por mecanismo sobre las 22 instancias
+Agregado por mecanismo sobre las 14 instancias
 caso×capa donde el caso es rojo y el baseline no lo detecta, y las
-15 donde el baseline predice rojo sin serlo.
+4 donde el baseline predice rojo sin serlo.
 Cada conteo se corrobora contra `assess()` real (ver `tools/evaluar-triage.js`,
 `analizarPatrones`) — no es una lectura a ojo del listado de abajo, aunque
 el listado permite verificar cada caso individualmente.
 
 **Falsos negativos de rojo** (el caso es rojo, el baseline no lo detecta):
-- **18 de 22** no disparan ningún hallazgo en absoluto —
+- **4 de 14** no disparan ningún hallazgo en absoluto —
   ninguna de las 6 respuestas del paciente coincide con ninguna regla, roja
   ni ámbar.
-- **4 de 22** sí disparan un hallazgo ámbar (fiebre o
+- **10 de 14** sí disparan un hallazgo ámbar (fiebre o
   herida) pero nunca escalan a rojo — el hallazgo existe pero se queda corto.
-- **14 de 22** reportan un número en rango de fiebre
+- **8 de 14** reportan un número en rango de fiebre
   (37-42) que ninguna regla reconoce como temperatura porque no va seguido
   de la palabra "grados" ni del símbolo "°" — ej. "marcó 38.2", "tenía como
   38, no sé si eso es mucho". Tanto `RED-FEVER-HIGH` como `AMBER-FEVER`
   exigen esa unidad explícita junto al número; un paciente que solo dice el
   número no la cumple.
-- **7 de 22** describen fiebre con una forma
+- **4 de 14** describen fiebre con una forma
   adjetival ("afiebrada", "acalorada") que `AMBER-FEVER` no reconoce — esa
   regla busca el literal `/fiebre/i`, `/calentura/i`, `/me\s+hierv\w+/i` o
   `/destemplanza/i`, ninguno de los cuales aparece como subcadena en esas
@@ -103,7 +103,7 @@ el listado permite verificar cada caso individualmente.
 **Falsos positivos de rojo** (el baseline predice rojo, el caso no lo es) —
 por regla que disparó:
 
-- `RED-NEURO`: 15 de 15
+- `RED-NEURO`: 4 de 4
 
 **El 100% de los falsos positivos de rojo vienen de una sola regla.**
 `RED-NEURO` incluye `/confund\w+/i`, `/confusion/i` y `/desorientad\w+/i`
@@ -130,46 +130,46 @@ este criterio de triage.
 ### Capa 1 (limpia)
 | Real \ Predicho | verde | amarillo | rojo |
 |---|---|---|---|
-| **verde** | 105 | 11 | 7 |
+| **verde** | 112 | 10 | 1 |
 | **amarillo** | 19 | 5 | 1 |
-| **rojo** | 9 | 2 | 1 |
+| **rojo** | 2 | 4 | 6 |
 
 ### Capa 2 (ruidosa)
 | Real \ Predicho | verde | amarillo | rojo |
 |---|---|---|---|
-| **verde** | 107 | 10 | 6 |
+| **verde** | 112 | 10 | 1 |
 | **amarillo** | 20 | 4 | 1 |
-| **rojo** | 9 | 2 | 1 |
+| **rojo** | 2 | 6 | 4 |
 
 ### Combinado (ambas capas)
 | Real \ Predicho | verde | amarillo | rojo |
 |---|---|---|---|
-| **verde** | 212 | 21 | 13 |
+| **verde** | 224 | 20 | 2 |
 | **amarillo** | 39 | 9 | 2 |
-| **rojo** | 18 | 4 | 2 |
+| **rojo** | 4 | 10 | 10 |
 
 ## Matrices de confusión — con contexto (prototipo, no producción)
 
 ### Capa 1 (limpia)
 | Real \ Predicho | verde | amarillo | rojo |
 |---|---|---|---|
-| **verde** | 101 | 15 | 7 |
+| **verde** | 108 | 14 | 1 |
 | **amarillo** | 19 | 5 | 1 |
-| **rojo** | 9 | 2 | 1 |
+| **rojo** | 2 | 4 | 6 |
 
 ### Capa 2 (ruidosa)
 | Real \ Predicho | verde | amarillo | rojo |
 |---|---|---|---|
-| **verde** | 104 | 13 | 6 |
+| **verde** | 109 | 13 | 1 |
 | **amarillo** | 20 | 4 | 1 |
-| **rojo** | 9 | 2 | 1 |
+| **rojo** | 2 | 6 | 4 |
 
 ### Combinado (ambas capas)
 | Real \ Predicho | verde | amarillo | rojo |
 |---|---|---|---|
-| **verde** | 205 | 28 | 13 |
+| **verde** | 217 | 27 | 2 |
 | **amarillo** | 39 | 9 | 2 |
-| **rojo** | 18 | 4 | 2 |
+| **rojo** | 4 | 10 | 10 |
 
 ## Dónde cambia el resultado el prototipo con contexto
 
@@ -243,15 +243,6 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues el apetito lo he notado un poquito bajo, como que no me provoca comer tanto como antes, pero algo como."
       6. [sueno] "Ay, el sueño sí lo he tenido bien alterado, me despierto varias veces por el dolor y luego no logro volver a dormir fácil."
 
-  - **caso_tray_pac_42_00004_3** / capa1_limpia — real: **verde**, predicho: **amarillo**
-    Hallazgos: AMBER-FEVER ("fiebre")
-      1. [dolor] "Ay, pues hoy lo siento como en un 3, algo manejable con las pastillas que me mandaron. Anoche estaba un poquito más molesto pero ya se calmó."
-      2. [fiebre] "Sí señor, me la tomé hace un rato y estaba en 37.1°C, así que nada de fiebre por ahora, gracias a Dios."
-      3. [movilidad] "Pues me muevo despacito, como es de esperarse por la cirugía, pero sí he podido caminar un poco por la casa con cuidado de no forzar el brazo."
-      4. [herida] "No, la he visto bien, normalita, sin enrojecimiento ni nada raro que salga de ahí. La estoy cuidando como me indicaron."
-      5. [apetito] "He comido normal, casi igual que antes, con ganas de comer mis comiditas de siempre, sin problema."
-      6. [sueno] "He dormido bien, gracias a Dios, sin muchas interrupciones, un sueño normal como siempre."
-
   - **caso_tray_pac_42_00006_3** / capa1_limpia — real: **amarillo**, predicho: **verde**
     Hallazgos: (ninguno)
       1. [dolor] "Ay, pues ahí normal, nada del otro mundo. Un dolorcito en la zona de la herida, será como un 5, pero eso es de esperarse, ¿no?"
@@ -278,15 +269,6 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       4. [herida] "La he visto normalita doctor, sin enrojecimiento ni nada raro, ni mal olor... pero es que no sé bien cómo revisarla, ¿usted cree que la estoy viendo bien? Me da miedo no darme cuenta si algo anda mal."
       5. [apetito] "Pues doctor, la verdad he comido un poquito menos de lo normal, como que no me da mucha hambre... ¿eso es preocupante? ¿No será que necesito comer más para recuperarme bien?"
       6. [sueno] "He dormido bien normalito doctor, sin problema para dormir... pero dígame, ¿todo lo que le he contado está bien? ¡Es que me tiene con los nervios de punta pensar que algo pueda estar mal!"
-
-  - **caso_tray_pac_42_00008_14** / capa1_limpia — real: **verde**, predicho: **rojo**
-    Hallazgos: RED-NEURO ("confunden"), AMBER-FEVER ("calentura")
-      1. [dolor] "Ay, ¿cómo así, perdón? ¿Me pregunta de la cadera o de la rodilla? Es que ya ni me acuerdo bien qué día fue la operación... pero el dolor está como un 2, algo suave."
-      2. [fiebre] "No señor, no he sentido nada de eso... o espere, ¿usted me pregunta de esta semana o de cuando salí del hospital? Es que se me confunden los días, pero ahorita me siento normal, sin calentura."
-      3. [movilidad] "Pues... me he estado moviendo bien, gracias a Dios, sin mucho problema para levantarme. Ay pero espere, ¿usted me está preguntando de esta semana o de la primera vez que me pararon después de la operación? Es que ya no sé ni qué día es hoy."
-      4. [herida] "Pues la miré esta mañana, o ayer, no me acuerdo bien, pero se ve tranquila, sin nada raro, ni rojo ni con líquido ni olor feo, doctor."
-      5. [apetito] "Ay sí, como bien, gracias a Dios... ¿o me preguntó si comí hoy? Es que ya no sé si desayuné o eso fue ayer, pero el apetito lo tengo normal, como siempre."
-      6. [sueno] "He dormido bien, tranquila, sin problema... aunque espere, ¿me pregunta de anoche o de toda la semana? Ay, ya ni sé, pero duermo normal, gracias a Dios."
 
   - **caso_tray_pac_42_00010_3** / capa1_limpia — real: **amarillo**, predicho: **verde**
     Hallazgos: (ninguno)
@@ -342,6 +324,15 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay pues sí, como normal, gracias a Dios no me falta el hambre. Oiga, ¿y usted no sabe si va a llover hoy? Es que quiero salir al patio un rato."
       6. [sueno] "Ah, duermo bien, gracias a Dios, como un bebé casi. Bueno mijo, ¿ya casi terminamos? Es que se me está enfriando el caldo."
 
+  - **caso_tray_pac_42_00015_3** / capa1_limpia — real: **amarillo**, predicho: **verde**
+    Hallazgos: (ninguno)
+      1. [dolor] "Ay, no, tranquila, ha sido nada del otro mundo, un dolorcito ahí en la herida, como un 4 tal vez, pero es soportable."
+      2. [fiebre] "Sí, me la tomé y estaba normalita, como en 37, nada de fiebre ni escalofríos, todo bien por ese lado."
+      3. [movilidad] "Pues me muevo despacito, obvio, uno recién operado no va a andar corriendo, pero nada grave, ahí voy caminando poquito a poquito."
+      4. [herida] "Se ve un poquito rojita ahí alrededor, pero nada de hinchazón ni de esas cosas raras que salgan, yo creo que es normal de la cicatrización."
+      5. [apetito] "Como un poquito menos que antes, pero como, no crea, no es que no me provoque nada, solo un poco más despacio con la comida."
+      6. [sueno] "Pues no he dormido muy bien, la verdad, me despierto varias veces, pero eso es normal después de una operación, no le pare muchas bolas a eso."
+
   - **caso_tray_pac_42_00016_1** / capa1_limpia — real: **amarillo**, predicho: **verde**
     Hallazgos: (ninguno)
       1. [dolor] "¡Ay doctor, es que no sé bien! Yo creo que un 5, pero es que me preocupa muchísimo, ¿eso es normal o me tengo que asustar? Dígame que no es grave, por favor."
@@ -351,23 +342,14 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues fíjese que he comido normal, gracias a Dios, no he perdido el apetito. Pero bueno, ¿eso está bien también? Es que con todo lo demás uno ya no sabe qué esperar."
       6. [sueno] "He dormido bien, la verdad, casi normal. Pero doctor, dígame ya, ¿todo esto que le conté está bien o me tengo que preocupar por algo? Es que la ansiedad no me deja tranquila."
 
-  - **caso_tray_pac_42_00017_7** / capa1_limpia — real: **rojo**, predicho: **amarillo**
-    Hallazgos: AMBER-WOUND ("pus")
+  - **caso_tray_pac_42_00017_7** / capa1_limpia — real: **rojo**, predicho: **verde**
+    Hallazgos: (ninguno)
       1. [dolor] "Ay, no, tranquila doctora, un poquito molesto no más, nada del otro mundo, uno aguanta."
       2. [fiebre] "Sí, me tomé la temperatura ayer, marcó como 37 y algo, nada de escalofríos ni cosas raras, tranquila."
       3. [movilidad] "Pues despacito, como es normal después de esto, pero me muevo, no crea que estoy tan mal."
       4. [herida] "Se ve un poquito rojita ahí en el borde, pero nada de esas cosas de pus ni nada raro, yo creo que es normal de la cicatrización, doctora."
       5. [apetito] "Pues como poquito, se me ha quitado un poco las ganas, pero algo paso, no se preocupe, eso ya va a mejorar."
       6. [sueno] "Pues no muy bien que digamos, me despierto varias veces, pero uno ya sabe que después de una operación así es normal, no es nada grave."
-
-  - **caso_tray_pac_42_00017_14** / capa1_limpia — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
-      1. [dolor] "¿Cómo dice? Ay, disculpe... el dolor... uy no sé bien, como un cinco creo, por la barriga, donde me operaron. Es que se me olvida si fue ayer o hace tres días la operación, perdone."
-      2. [fiebre] "Sí, ha habido momentos así como de frío, sudando... me tomaron la temperatura y creo que marcó como 38, algo así, no me acuerdo bien la hora ni el día, discúlpeme."
-      3. [movilidad] "Pues me muevo poquito, con ayuda, despacito... es que me canso rápido, no sé si es normal a estos días o no, ya perdí la cuenta de cuántos llevo."
-      4. [herida] "Ay sí, doctor... eh, mi hija me dijo que vio como un líquido, amarillo creo, saliendo ahí de la herida, no sé bien si eso es normal, me preocupa un poco."
-      5. [apetito] "Ay no, casi no me provoca comer nada, todo me da como asco, mi señora se preocupa porque como poquito."
-      6. [dolor] "No, duermo muy mal, me despierto varias veces, no sé si es por el dolor o los nervios, ya perdí la cuenta de las noches así."
 
   - **caso_tray_pac_42_00019_1** / capa1_limpia — real: **amarillo**, predicho: **verde**
     Hallazgos: (ninguno)
@@ -378,23 +360,14 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay, la comida... no sé, no me provoca mucho, todo me sabe raro. Pero bueno, ¿usted no me iba a preguntar sobre el sueño también?"
       6. [sueno] "Ay, hija, esas noches larguísimas, uno da vueltas y vueltas... pero no quiero quitarle más tiempo, ¿ya casi terminamos?"
 
-  - **caso_tray_pac_42_00019_7** / capa1_limpia — real: **rojo**, predicho: **verde**
+  - **caso_tray_pac_42_00019_14** / capa1_limpia — real: **rojo**, predicho: **verde**
     Hallazgos: (ninguno)
-      1. [dolor] "Buenas, mijo. El dolor lo siento en el pecho, donde la cirugía, y hoy lo sentiría como un 5, más incómodo que otros días."
-      2. [dolor] "Sí señor, me he sentido como afiebrada, me tomé la temperatura y marcó 38.2. También he sentido un poco de escalofrío."
-      3. [movilidad] "Ay, muy mal, la verdad. Antes me movía sola sin problema y ahora casi no puedo levantarme, necesito que alguien me ayude para todo."
-      4. [herida] "Pues la he visto un poco enrojecida alrededor, un eritema leve como le dicen, pero no le he visto secreción ni mal olor, gracias a Dios."
-      5. [apetito] "Ay no, casi no me provoca comer nada, se me ha ido mucho el apetito estos días, como poquito y a las fuerzas."
-      6. [sueno] "No, mijo, he dormido muy mal, me despierto varias veces por el dolor y el malestar, casi no descanso."
-
-  - **caso_tray_pac_42_00020_14** / capa1_limpia — real: **verde**, predicho: **rojo**
-    Hallazgos: RED-NEURO ("confunden")
-      1. [dolor] "Ay, disculpe, ¿me repite? Es que... creo que ha sido leve, poquito no más, como un 2, pero espere, ¿estamos hablando de hoy o de ayer? Ya ni me acuerdo bien qué día es."
-      2. [fiebre] "No, no, fiebre no he sentido... creo que me tomé la temperatura ayer, o antier, no sé bien, pero me acuerdo que decía como 36 y algo, normalita."
-      3. [movilidad] "Eso sí me acuerdo mejor, me he movido bien, normal, sin problema para caminar ni nada... aunque espere, ¿usted me preguntó por hoy o por cuando salí de la cirugía? Es que se me mezclan los días."
-      4. [herida] "No, doctor... digo, no señor, la he visto normal, sin nada raro, ni rojo ni con esas cosas que dice. Ay perdón, ¿usted me preguntó de la herida de ahora o de cuando me la revisaron en el hospital?"
-      5. [apetito] "No, como bien, tengo ganas de comer normal... espere, ¿ya es hora del almuerzo? Perdón, se me fue la cabeza un momento, ¿qué me preguntaba?"
-      6. [sueno] "He dormido bien, normal, sin despertarme por dolor ni nada... aunque, uy, ¿usted me llamó ayer también o es la primera vez? Perdóneme, es que se me confunden las llamadas."
+      1. [dolor] "Ay, ¿cómo así, mija? Espere... ¿la cirugía fue el jueves o fue la otra semana? Es que el dolor lo siento como un 6, ahí en el pecho, pero se me confunden los días."
+      2. [fiebre] "Ay sí, creo que sí... me sentí como con mucho calor anoche, toda sudada, y frío al mismo tiempo, qué raro. No sé si me la tomé o fue mi hija, pero me acuerdo un número como... ¿39 algo? No estoy segura, mija."
+      3. [movilidad] "Pues... uy, me cuesta un poco, mija, me siento como pesada, despacito me muevo, no sé si es normal o no a estos días... ¿usted sabe cuántos días llevo ya? Se me pierden las cuentas."
+      4. [herida] "Ay, la miré ayer o antier, no sé bien... la vi como rojita, un poquito, alrededor mija, pero no le vi que saliera nada raro ni mal olor, gracias a Dios."
+      5. [apetito] "Ay no, mija, casi no me provoca comer, todo me da como asco o pereza, apenas unas cucharaditas de sopa y ya. Mi hija se preocupa porque no como casi nada."
+      6. [sueno] "Ay no, casi no duermo, mija, me despierto sudada y con dolor, y no sé si es de noche o de día a veces, todo se me revuelve."
 
   - **caso_tray_pac_42_00021_3** / capa1_limpia — real: **verde**, predicho: **rojo**
     Hallazgos: RED-NEURO ("confusión")
@@ -414,24 +387,6 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues el apetito lo tengo un poco bajo, como que no me provoca comer igual que antes, pero de todas maneras algo como. No es que no coma nada, pero sí menos cantidad."
       6. [sueno] "Ay, el sueño sí lo tengo bastante alterado, me despierto varias veces en la noche por el dolor y me cuesta volver a dormirme, así que descanso poquito."
 
-  - **caso_tray_pac_42_00023_1** / capa1_limpia — real: **verde**, predicho: **rojo**
-    Hallazgos: RED-NEURO ("confundo")
-      1. [dolor] "¿Ayer? Ay, espere... ¿fue ayer la operación o antier? Ya me confundo con los días... el dolor así como un poquito molesto, más o menos a la mitad, no sé cómo decirle."
-      2. [fiebre] "Sí, me la tomé... o creo que fue mi hija la que la tomó, no sé, marcó algo así como treinta y siete y algo, no muy alta pero tampoco fría, ¿me entiende?"
-      3. [movilidad] "Pues... me cuesta un poco, toca que me ayuden a levantarme, así despacito, no puedo yo solita todavía... es normal eso, ¿no? Es que no me acuerdo si el médico me dijo cuánto tiempo iba a durar así."
-      4. [herida] "Ay, sí, la vi como rojita alrededor, un poquito no más, no sé si es normal o no... no le he visto que salga nada raro, solo eso rojito."
-      5. [apetito] "He comido bien, gracias a Dios, como siempre, no ha habido problema con eso... ay espere, ¿usted me preguntó del dolor ya? Es que se me olvida si ya contesté eso."
-      6. [dolor] "Pues no he dormido tan bien como antes, me despierto un poco en la noche, no sé si es por el dolor o porque ya estoy vieja y así duermo yo, jeje."
-
-  - **caso_tray_pac_42_00024_1** / capa1_limpia — real: **verde**, predicho: **rojo**
-    Hallazgos: RED-NEURO ("confundo")
-      1. [dolor] "¿Cirugía... ya me la hicieron? Ay perdone, es que me confundo con los días... ¿hoy es martes? Del dolor, pues casi no siento nada, como un uno, por ahí en el pecho, no sé si es hoy o ayer que me operaron."
-      2. [fiebre] "Ay sí, me la tomaron... creo que decía como 37 y algo, ¿eso es mucho? No he sentido escalofríos, pero es que se me olvida si fue hoy o ayer que me la midieron."
-      3. [movilidad] "Pues me muevo despacito, como esperaba el doctor, no sé si eso está bien o mal... ¿usted me había dicho algo de eso antes? Es que ando como perdido con los días."
-      4. [herida] "Ahí la he visto un poquito rojita, como un enrojecimiento leve, pero no le he visto que salga nada raro ni mal olor... ¿eso es normal o me tengo que preocupar? Es que no recuerdo si ya le había contado esto."
-      5. [apetito] "He comido normal, como siempre, sin náuseas ni nada raro... aunque no sé si eso fue hoy o ayer, se me revuelven los días, disculpe."
-      6. [sueno] "He dormido como raro, medio alterado, no sé si es por los nervios o por la operación... me despierto y no sé ni qué hora es, todo se me mezcla."
-
   - **caso_tray_pac_42_00025_7** / capa1_limpia — real: **amarillo**, predicho: **verde**
     Hallazgos: (ninguno)
       1. [dolor] "¡Ay doctor, gracias a Dios por llamar! El dolor está como en un 3, ahí en la herida... pero ¿eso es normal? ¿o debería preocuparme?"
@@ -450,17 +405,8 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues la verdad he comido menos de lo normal, como que no me provoca mucho... ¿eso es malo doctor? Es que con tanta preocupación se me quita hasta el hambre."
       6. [dolor] "Ay doctor, el sueño ha sido lo peor, casi no duermo, me despierto asustada pensando en el dolor y en si todo va bien... ¡dígame que esto es normal, por favor!"
 
-  - **caso_tray_pac_42_00026_7** / capa1_limpia — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
-      1. [dolor] "¿Cómo dijo? Ay perdón, es que... espere, ¿la cirugía fue el jueves o el viernes? Es que el dolor sí está fuerte, como un 6, y no sé si es normal a estos días."
-      2. [dolor] "Sí, señora, ayer o antier me sentí como afiebrada, tenía el cuerpo caliente... creo que como 38, no sé si eso es mucho. ¿Eso es grave o es normal a los días que voy?"
-      3. [movilidad] "Ah, eso sí, para caminar no me cuesta nada, camino normal... es más raro porque me duele pero me muevo bien, no sé por qué será eso."
-      4. [herida] "Ay sí, eso sí me tiene preocupada... la he visto como con un líquido, amarillo creo, saliendo de ahí. No sé si eso es normal o si me tengo que asustar, es que no me acuerdo si eso pasó desde el principio o apenas ayer."
-      5. [apetito] "No, casi no me da hambre, como poquito y a veces ni eso... no sé si es por los medicamentos o qué será, disculpe ¿me preguntó del sueño también o eso ya fue?"
-      6. [sueno] "Ay no, para nada, duermo muy mal, me despierto varias veces, no sé si es por el dolor o por los nervios... la verdad ya ni sé qué día es hoy de tanto que no descanso."
-
-  - **caso_tray_pac_42_00026_14** / capa1_limpia — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00026_14** / capa1_limpia — real: **rojo**, predicho: **amarillo**
+    Hallazgos: AMBER-FEVER ("acalorada")
       1. [dolor] "Ay, pues... más o menos, ahí voy sobreviviendo. ¿Usted cómo ha estado, todo bien por allá?"
       2. [fiebre] "Uy, no sé, no le he puesto mucho cuidado a eso... aunque sí me he sentido como acalorada a ratos. ¿Usted cree que eso es normal después de la cirugía?"
       3. [movilidad] "Ah, eso sí, camino normal, no hay problema con eso... oiga, ¿usted sabe si esta llamada dura mucho? Es que tengo algo pendiente ahorita."
@@ -477,17 +423,8 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay no, casi no me da hambre, doctor... como poquitico, todo se me revuelve, ni ganas de comer tengo."
       6. [sueno] "Uy, dormir no, casi nada... me despierto a cada rato, no sé si por el dolor o por los ruidos, todo revuelto ahí en la noche, doctor."
 
-  - **caso_tray_pac_42_00027_7** / capa1_limpia — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
-      1. [dolor] "Ehh... ¿cómo así, del día de hoy o de cuando me operaron? Es que se me revuelven los días... creo que un 6, más o menos, ahorita me duele bastante."
-      2. [dolor] "Sí, sí... ayer o antier me sentí como con frío, temblando, y creo que me la tomé... ¿o eso fue hoy? Marcaba como 39 algo, no me acuerdo bien."
-      3. [fiebre] "Pues... me cuesta un poco, ando despacito, agarrado de algo. No sé si es normal a estos días o qué, pero no me siento con muchas fuerzas."
-      4. [movilidad] "Sí señorita, la he visto un poco roja alrededor, como enrojecidita... no sé si eso es normal o no, no me acuerdo si antes se veía así también."
-      5. [herida] "No, la verdad casi no me da hambre, como poquito y ya me siento lleno... y duermo mal también, me despierto mucho, no sé ni qué día es a veces."
-      6. [sueno] "Duermo muy mal, señorita, me despierto varias veces por el dolor y sudando... a veces no sé si es de noche o de día, todo se me revuelve."
-
-  - **caso_tray_pac_42_00027_14** / capa1_limpia — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00027_14** / capa1_limpia — real: **rojo**, predicho: **amarillo**
+    Hallazgos: AMBER-FEVER ("38")
       1. [dolor] "Ay, no, más o menos no más, un dolorcito ahí normal de la operación, nada del otro mundo. Si acaso un 6, pero eso ya se me pasa solo, no se preocupe."
       2. [dolor] "Pues sí me he sentido como con un poco de calorcito, pero nada de escalofríos ni nada raro. Me tomé la temperatura y salió como en 38, pero eso debe ser del calor de acá no más, doctor."
       3. [movilidad] "Ay, pues ahí vamos despacito, un poco más difícil de lo normal para levantarme, pero eso es normal después de la operación, no es nada grave. Ya me acostumbro poco a poco, no se preocupe."
@@ -504,32 +441,14 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay pues casi no me provoca comer, pero eso es normal con tanto medicamento, no me preocupo por eso, algo como paso."
       6. [sueno] "Pues me despierto un poquito por la molestia, pero duermo mis horitas, no es nada de qué alarmarse, tranquila."
 
-  - **caso_tray_pac_42_00028_3** / capa1_limpia — real: **verde**, predicho: **rojo**
-    Hallazgos: RED-NEURO ("confunde"), AMBER-FEVER ("fiebre")
+  - **caso_tray_pac_42_00028_3** / capa1_limpia — real: **verde**, predicho: **amarillo**
+    Hallazgos: AMBER-FEVER ("fiebre")
       1. [dolor] "Ay, ¿cómo así, perdone? ¿Me pregunta de hoy o de cuando me operaron... eso fue el lunes o el martes? Ahorita siento como un tres, por ahí en la cadera... o la rodilla, ya se me confunde cuál fue."
       2. [fiebre] "Mmm, fiebre no sé... me tomaron la temperatura hace un rato y creo que estaba normal, como en 37, pero no me acuerdo si fue hoy o ayer. Escalofríos no he sentido, eso sí se lo puedo asegurar."
       3. [movilidad] "Sí, más o menos bien, doctor... digo, señorita. Me levanto de la cama sin mucho problema, camino con el andador o lo que me dieron ahí, no me acuerdo cómo se llama, pero sí me muevo normal."
       4. [herida] "La herida... la vi esta mañana cuando me la revisó la enfermera, o fue ayer, no sé, pero se veía normal, sin nada raro, ni rojo ni con esos líquidos feos. No huele mal tampoco, eso sí me acuerdo."
       5. [apetito] "Ay, es que no tengo casi ganas de comer, señorita... me traen la bandeja y como poquito, no sé si es por los medicamentos o qué. Náuseas no, pero la comida no me provoca casi nada."
       6. [dolor] "Duermo por ratos, señorita, me despierto y no sé si es por el dolor o porque ya me acostumbré a otro horario en el hospital... pero no es que sea muy grave, así como que me despierto y ya."
-
-  - **caso_tray_pac_42_00028_7** / capa1_limpia — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
-      1. [dolor] "Ay, pues no ha sido tan grave, algo de dolor ahí en la cadera, será un 5 más o menos, pero uno aguanta, no se preocupe."
-      2. [fiebre] "Pues sí, me he sentido un poco calientica, la tomé y marcaba como 38 y algo, pero yo creo que es del calor de la casa, no le he puesto mucho cuidado."
-      3. [movilidad] "Ay no, en eso sí estoy bien, camino normal, sin problema, ahí me muevo tranquila por la casa."
-      4. [herida] "Pues sí le sale un poquito de líquido ahí, como amarillito, pero no es mucho, yo creo que es normal de la sanada, no me preocupa mucho."
-      5. [apetito] "Pues la verdad como poquito, no tengo mucha hambre estos días, pero no es nada, ya se me pasará, no se preocupe por eso."
-      6. [dolor] "Pues duermo poquito, me despierto varias veces en la noche, pero eso es normal a esta edad, no es nada grave, ya cogeré el sueño."
-
-  - **caso_tray_pac_42_00028_14** / capa1_limpia — real: **rojo**, predicho: **amarillo**
-    Hallazgos: AMBER-FEVER ("calentura")
-      1. [dolor] "¡Ay, doctor, qué bueno que llama! Mire, el dolor está como en un 5, pero es que hoy amanecí con calentura también, ¿eso es normal? Estoy muy asustada, no sé qué hacer."
-      2. [fiebre] "Sí señor, me tomé la temperatura y marcó 38.1°C, y sí he sentido como escalofríos también. ¿Eso es grave, doctor? Es que también la herida se ve un poquito rojita y me tiene con los nervios de punta."
-      3. [movilidad] "Ay, doctor, eso es lo peor, casi no puedo ni levantarme sola, siento la pierna como que no responde, muy incapacitada me siento. Me da miedo caerme, ¿usted cree que eso es normal o me está pasando algo malo?"
-      4. [herida] "Sí doctor, la veo con un enrojecimiento leve alrededor, no sale nada de líquido gracias a Dios, pero igual me preocupa muchísimo, ¿será que se me está infectando? Dígame la verdad, por favor."
-      5. [apetito] "Ay, casi no me provoca comer nada, doctor, se me ha ido el apetito por completo, como poquito y a las fuerzas. Con tanta preocupación ni hambre me da."
-      6. [sueno] "No, doctor, para nada, duermo muy mal, me despierto varias veces por el dolor y por los nervios, casi no descanso nada. Dígame, ¿todo esto es normal o debo preocuparme más?"
 
   - **caso_tray_pac_42_00029_7** / capa1_limpia — real: **amarillo**, predicho: **verde**
     Hallazgos: (ninguno)
@@ -540,17 +459,8 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues la verdad el apetito lo tengo bastante disminuido, casi no me provoca comer, como poquito y a veces me toca obligarme."
       6. [sueno] "El sueño lo he tenido muy alterado, me despierto varias veces en la noche y me cuesta volver a conciliar el sueño."
 
-  - **caso_tray_pac_42_00030_3** / capa1_limpia — real: **amarillo**, predicho: **verde**
-    Hallazgos: (ninguno)
-      1. [dolor] "Buenas, el dolor lo siento en la zona donde me operaron, como un ardorcito. Ahorita está como en un 4, no es insoportable pero sí molesta bastante."
-      2. [fiebre] "Sí, me he sentido un poco caliente, como afiebrada, me tomé la temperatura y marcó 37.8. No he tenido escalofríos ni sudoración, solo esa sensación de calorcito."
-      3. [movilidad] "Ay no, en eso sí estoy bien, me puedo levantar y caminar normal, no siento que me limite para moverme."
-      4. [herida] "La herida la veo normal, no tiene enrojecimiento raro ni hinchazón, tampoco le sale nada ni huele mal. Se ve como debe ser, limpiecita."
-      5. [apetito] "Pues la verdad el apetito lo tengo muy bajo, casi no me provoca comer nada, como poquito y a la fuerza no más."
-      6. [dolor] "La verdad he dormido muy mal, me despierto varias veces en la noche por el dolor y por esa sensación de calor, casi no descanso bien."
-
-  - **caso_tray_pac_42_00030_7** / capa1_limpia — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00030_7** / capa1_limpia — real: **rojo**, predicho: **amarillo**
+    Hallazgos: AMBER-FEVER ("acalorada")
       1. [dolor] "Ay pues... más o menos, ahí normal, como uno se siente después de esas cosas. ¿Usted qué comió hoy?"
       2. [dolor] "Uy, no sé, no le he puesto mucha atención a eso... he estado como acalorada un poco pero no sé si eso cuenta. ¿Usted cree que eso es normal por el clima de aquí?"
       3. [movilidad] "Ah sí, ahí camino normal, sin problema... oiga, ¿y usted hace mucho este trabajo de las llamadas?"
@@ -558,32 +468,14 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay, no sé, como que no me provoca mucho comer últimamente... pero bueno, uno con el estrés a veces no come bien, ¿no? ¿Usted cree que eso influye?"
       6. [sueno] "Pues... no muy bien la verdad, me despierto varias veces, pero no sé, será que estoy nerviosa no más. ¿Ya casi terminamos? Es que me da como pereza hablar de esto."
 
-  - **caso_tray_pac_42_00030_14** / capa1_limpia — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00030_14** / capa1_limpia — real: **rojo**, predicho: **amarillo**
+    Hallazgos: AMBER-FEVER ("38")
       1. [dolor] "Ay, pues normal, un poquito de molestia nomás, nada que no se aguante... como un 6 tal vez, pero no es tan grave, ahí voy."
       2. [fiebre] "Pues sí, me he sentido como tibia, calientica, pero no creo que sea nada, capaz es el clima... me tomé la temperatura y marcó como 38, pero eso no es mucho, ¿cierto?"
       3. [movilidad] "Pues... ha sido un poquito más difícil de lo normal, como que no me quiero ni levantar de la cama, pero eso es porque estoy vaga nomás, no es que no pueda."
       4. [herida] "Se ve un poquito rojita alrededor, pero nada de otro mundo, no le sale nada raro ni nada, seguro es normal por la cicatrización."
       5. [apetito] "Pues como poquito, casi no me provoca nada, pero eso también es normal después de una operación, ¿no? No es que esté enferma ni nada."
       6. [dolor] "Pues duermo poquito, me despierto varias veces, pero es que uno no está acostumbrado a la cama del hospital... no es nada grave, ya se me pasará."
-
-  - **caso_tray_pac_42_00031_3** / capa1_limpia — real: **verde**, predicho: **rojo**
-    Hallazgos: RED-NEURO ("confundo")
-      1. [dolor] "¿Cómo así? Ay, disculpe... ¿es de la cirugía de la semana pasada o la de ayer? Es que me confundo con las fechas... el dolor está como en un 1, poquito no más."
-      2. [fiebre] "Ay no sé, creo que no me he tomado la temperatura hoy... pero no he sentido escalofríos, así que supongo que estoy bien, ¿no? Ayer sí me la tomé y creo que estaba normal, como 36 y algo."
-      3. [movilidad] "Sí señora, camino normal, sin problema... aunque a veces se me olvida si ya me levanté hoy o fue ayer, jaja."
-      4. [herida] "Pues la vi esta mañana, o creo que fue anoche... y la vi normal, sin nada raro, ni rojo ni con esos líquidos feos."
-      5. [apetito] "Pues como un poquito menos que antes, no me da mucha hambre, pero como algo igual... ¿ya le había contado esto o es la primera vez que me pregunta?"
-      6. [sueno] "Ay, el sueño sí ha estado como raro, me despierto varias veces, no sé si es por la cirugía o por los nervios... ¿usted me había preguntado esto antes también?"
-
-  - **caso_tray_pac_42_00032_14** / capa1_limpia — real: **verde**, predicho: **amarillo**
-    Hallazgos: AMBER-FEVER ("fiebre")
-      1. [dolor] "Ay, no, muy poquito doctor, casi ni lo siento... un dos por ahí, nada preocupante, ya casi ni me acuerdo que me operaron."
-      2. [fiebre] "No señor, para nada, me he sentido bien fresco. Me tomé la temperatura y estaba normalita, como en 36 y algo, nada de fiebre ni escalofríos."
-      3. [movilidad] "Sí señor, camino bien, sin problema. Hasta he dado mis vueltecitas por la casa sin necesidad de ayuda."
-      4. [herida] "No, doctor, la herida se ve bien tranquila, como debe ser. Nada raro, ni rojez ni esas cosas, todo normal por ahí."
-      5. [apetito] "Como bien, doctor, con ganas normales, no me ha faltado el apetito para nada."
-      6. [sueno] "Duermo bien, tranquilo, sin despertarme por nada raro. Todo bien por ese lado, doctor."
 
   - **caso_tray_pac_42_00033_3** / capa1_limpia — real: **verde**, predicho: **amarillo**
     Hallazgos: AMBER-FEVER ("fiebre")
@@ -604,7 +496,7 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       6. [sueno] "Sí señora, he dormido bien, normal... pero ¿usted cree que es bueno dormir tanto? Ay, disculpe que pregunte tanto, es que todo esto me tiene con los nervios de punta."
 
   - **caso_tray_pac_42_00035_3** / capa1_limpia — real: **verde**, predicho: **amarillo**
-    Hallazgos: AMBER-FEVER ("fiebre"), AMBER-WOUND ("pus")
+    Hallazgos: AMBER-FEVER ("fiebre")
       1. [dolor] "¡Ay, no sé, como un 3! Pero dígame, ¿eso es normal o me tengo que preocupar? Es que me da mucho miedo que algo esté mal, ¿sí?"
       2. [fiebre] "Sí señor, me tomé la temperatura y marcó 37.5°C... ¿eso ya es fiebre? ¡Ay, me preocupa mucho, dígame la verdad porfa!"
       3. [movilidad] "Pues la verdad me he podido mover normal, camino sin problema... pero igual ¿eso está bien? ¿No debería sentir más dolor al moverme? ¡Ay, dígame que todo está bien, por favor!"
@@ -721,15 +613,6 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues doctor, la verdad he comido un poquito menos de lo normal, como que no me da mucha hambre... ¿eso es preocupante? ¿No será que necesito comer más para recuperarme bien? No, olvide lo que dije, es al revés."
       6. [sueno] "He dormido bien normalito doctor, sin problema para dormir... pero dígame, ¿todo lo que le he contado está bien? ¡Es que me tiene con los nervios de punta pensar que algo pueda estar mal!"
 
-  - **caso_tray_pac_42_00008_14** / capa2_ruidosa — real: **verde**, predicho: **rojo**
-    Hallazgos: RED-NEURO ("confunden"), AMBER-FEVER ("calentura")
-      1. [dolor] "Ay, ¿cómo así, perdón? ¿Me pregunta de la cadera o de la rodilla? Es que ya ni me acuerdo bien qué día fue la operación... pero el dolor está como un 2, algo suave."
-      2. [fiebre] "No señor, no he sentido nada de eso... o espere, ¿usted me pregunta de esta semana o de cuando salí del hospital? Es que se me confunden los días, pero ahorita me siento normal, sin calentura. pues"
-      3. [movilidad] "[inaudible] me he estado moviendo bien, gracias [inaudible] Dios, sin mucho problema para levantarme. Ay pero espere, [inaudible] me está pr- de esta semana o de la primera vez [inaudible] me pararon después de la operación? Es [inaudible] ya no sé ni [inaudible] día es [inaudible]"
-      4. [?] "Pues la miré esta mañana, o ayer, no me acuerdo bien, pero se ve tranquila, sin nada raro, ni rojo ni con líquido ni olor feo, doctor. ... Ahí vamos, no le podría decir con seguridad."
-      5. [apetito] "Ay sí, como bien, gracias a Dios... ¿o me preguntó si comí hoy? Es que ya no sé si desayuné o eso fue ayer, pero el apetito lo tengo normal, como siempre."
-      6. [sueno] "He dormido bien, tranquila, sin problema... aunque espere, ¿me pregunta de anoche o de toda la semana? Ay, ya ni sé, pero duermo normal, gracias a Dios."
-
   - **caso_tray_pac_42_00010_3** / capa2_ruidosa — real: **amarillo**, predicho: **verde** — con interrupción de tercero
     Hallazgos: (ninguno)
       1. [dolor] "Ay, pues... más [inaudible] menos, ahí voy tirando. ¿Usted [inaudible] me nota la voz?"
@@ -784,6 +667,15 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "[inaudible] pues sí, como nor- gracias a Dios no me falta el hambre. Oiga, ¿y usted no sab- si va a llover hoy? Es que qui- salir al patio [inaudible] rato."
       6. [?] "Ah, duermo bien, gracias a Dios, como un bebé casi. Bueno mijo, ¿ya casi terminamos? Es que se me está enfriando el caldo."
 
+  - **caso_tray_pac_42_00015_3** / capa2_ruidosa — real: **amarillo**, predicho: **verde** — con interrupción de tercero
+    Hallazgos: (ninguno)
+      1. [dolor] "Ay, no, tranquila, ha sido nada del otro mundo, un dolorcito ahí en la herida, como un 4 tal vez, pero es soportable."
+      2. [fiebre] "Sí, me la tomé y estaba normalita, como en 37, nada de fiebre ni escalofríos, todo bien por ese lado."
+      3. [movilidad] "Pues me muevo despacito, obvio, uno recién operado no va a andar corriendo, pero nada grave, ahí voy caminando poquito a poquito."
+      4. [herida] "Se ve un poquito rojita ahí alrededor, pero nada de hinchazón ni de esas cosas raras que salgan, yo creo que es normal de la cicatrización."
+      5. [apetito] "..."
+      6. [sueno] "Pues no he dormido muy bien, la verdad, me despierto varias veces, pero eso es normal después de una operación, no le pare muchas bolas a eso."
+
   - **caso_tray_pac_42_00016_1** / capa2_ruidosa — real: **amarillo**, predicho: **verde** — con interrupción de tercero
     Hallazgos: (ninguno)
       1. [dolor] "¡Ay doctor, es que no sé bien! Yo creo que un 5, pero es que me preocupa muchísimo, ¿eso es normal o me tengo que asustar? Dígame que no es grave, por favor."
@@ -793,23 +685,14 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues fíjese que he comido normal, gracias a Dios, no he perdido el apetito. Pero bueno, ¿eso está bien también? Es que con todo lo demás uno ya no sabe qué esperar."
       6. [sueno] "Este... no, nada, siga con la otra pregunta."
 
-  - **caso_tray_pac_42_00017_7** / capa2_ruidosa — real: **rojo**, predicho: **amarillo** — con interrupción de tercero
-    Hallazgos: AMBER-WOUND ("pus")
+  - **caso_tray_pac_42_00017_7** / capa2_ruidosa — real: **rojo**, predicho: **verde** — con interrupción de tercero
+    Hallazgos: (ninguno)
       1. [dolor] "Ay, no, tranquila doctora, un poquito molesto no más- nada del otro [inaudible] uno aguanta."
       2. [fiebre] "Sí, me tomé la temperatura ayer, marcó como 37 y algo, nada de escalofríos ni cosas raras, tranquila."
       3. [movilidad] "Este... no, nada, siga con la otra pregunta."
       4. [herida] "Se ve un poquito rojita ahí en el borde, pero nada de esas cosas de pus ni nada raro, yo creo que es normal de la cicatrización, doctora."
       5. [apetito] "..."
       6. [sueno] "Pues no muy bien que digamos, me despierto varias veces, pero uno ya sabe que después de una operación así es normal, no es nada grave. ... Pues no sé, más o menos."
-
-  - **caso_tray_pac_42_00017_14** / capa2_ruidosa — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
-      1. [dolor] "¿Cómo dice? Ay, disculpe... el dolor... uy no le sé decir bien, como un cinco creo, por la barriga, donde me operaron. Es que se me olvida si fue ayer o hace tres días la operación, perdone."
-      2. [?] "Sí, [inaudible] [inaudible] momentos así como de frío, sudando... me tomaron la temperatura y cre- que marcó como 38, algo así, no me acuerdo bien la hora [inaudible] el día, discúlpeme."
-      3. [movilidad] "Pues me muevo poquito, con ayuda, despacito... es que me canso rápido, no sé si es normal a estos días o no, ya perdí la cuenta de cuántos llevo. Espere, en realidad no, creo que sí me duele bastante."
-      4. [herida] "Ay sí, doctor... eh, mi hija me dijo que vio como un líquido, amarillo creo, saliendo ahí de la herida, no sé bien si eso es normal, me preocupa un poco."
-      5. [apetito] "Ay no, casi no me provoca comer nada, todo me da como asco, mi señora se preocupa porque como poquito."
-      6. [dolor] "[silencio]"
 
   - **caso_tray_pac_42_00019_1** / capa2_ruidosa — real: **amarillo**, predicho: **verde** — con interrupción de tercero
     Hallazgos: (ninguno)
@@ -820,8 +703,8 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay, la comida... no sé, no me provoca mucho, todo me sabe raro. Pero bueno, ¿usted no me iba a preguntar sobre el sueño también?"
       6. [sueno] "Ay, hija, esas noches larguísimas, uno da vueltas y vueltas... pero no quiero quitarle más tiempo, ¿ya casi terminamos?"
 
-  - **caso_tray_pac_42_00019_7** / capa2_ruidosa — real: **rojo**, predicho: **verde** — con interrupción de tercero
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00019_7** / capa2_ruidosa — real: **rojo**, predicho: **amarillo** — con interrupción de tercero
+    Hallazgos: AMBER-MOBILITY ("no puedo levantarme")
       1. [dolor] "Buenas, mijo. El dolor lo siento en el pecho, donde la cirugía, y hoy lo sentiría como un 5, más incómodo que otros días. Espere, en realidad no, creo que sí me duele bastante."
       2. [dolor] "[inaudible] señor, me he sentido como afiebr- me tomé la temperatura y marcó [inaudible] [inaudible] he sentido un poco de escalofrío."
       3. [movilidad] "Ay, muy mal, la verdad. Antes me movía sola sin problema y ahora casi no puedo levantarme, necesito que alguien me ayude para todo. ... Ahí vamos, no le podría decir con seguridad."
@@ -829,14 +712,14 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay no, casi no me provoca comer nada, se me ha ido mucho el apetito estos días, como poquito y a las fuerzas."
       6. [sueno] "No, mijo, he dormido muy mal, me despierto varias veces por el dolor y el malestar, casi no descanso."
 
-  - **caso_tray_pac_42_00020_14** / capa2_ruidosa — real: **verde**, predicho: **rojo**
-    Hallazgos: RED-NEURO ("confunden")
-      1. [dolor] "Ay, disculpe, ¿me repite? Es que... creo que ha sido leve, poquito no más, como un 2, pero espere, ¿estamos hablando de hoy o de ayer? Ya ni me acuerdo bien qué día es."
-      2. [fiebre] "No, no, fiebre no he sentido... creo que me tomé la temperatura ayer, o antier, no sé bien, pero me acuerdo que decía como 36 y algo, normalita. Espere, en realidad no, creo que sí me duele bastante."
-      3. [movilidad] "Eso sí me acuerdo mejor, me he movido bien, normal, sin problema para caminar ni nada... aunque espere, ¿usted me preguntó por hoy o por cuando salí de la cirugía? Es que se me mezclan los días."
-      4. [herida] "No, doctor... digo, no señor, la he visto normal, sin nada raro, ni rojo ni con esas cosas que dice. Ay perdón, ¿usted me preguntó de la herida de ahora o de cuando me la revisaron en el hospital?"
-      5. [apetito] "No, como bien, tengo ganas de comer normal... espere, ¿ya es hora del almuerzo? Perdón, se me fue la cabeza un momento, ¿qué me preguntaba?"
-      6. [?] "He dormido bien, normal, sin despertarme por dolor ni nada... aunque, uy, ¿usted me llamó ayer también o es la primera vez? Perdóneme, es que se me confunden las llamadas."
+  - **caso_tray_pac_42_00019_14** / capa2_ruidosa — real: **rojo**, predicho: **verde** — con interrupción de tercero
+    Hallazgos: (ninguno)
+      1. [dolor] "Ay, ¿cómo así, mija? Espere... ¿la cirugía fue el jueves o fue la otra semana? Es que el dolor lo siento como un 6, ahí en el pecho, pero se me confunden los días."
+      2. [fiebre] "Ay sí, creo que sí... me sentí como con mucho calor anoche, toda sudada, y frío al mismo tiempo, qué raro. No sé si me la tomé o fue mi hija, pero me acuerdo un número como... ¿39 algo? No estoy segura, mija."
+      3. [movilidad] "Pues... uy, me cuesta un poco, mija, me siento como pesada, despacito me muevo, no sé si es normal o no a estos días... ¿usted sabe cuántos días llevo ya? Se me pierden las cuentas."
+      4. [herida] "Ay, la miré ayer o antier, no sé bien... la vi como rojita, un poquito, alrededor mija, pero no le vi que saliera nada raro ni mal olor, gracias a Dios."
+      5. [apetito] "Ay no, mija, casi no me provoca comer, todo me da como asco o pereza, apenas unas cucharaditas de sopa y ya. Mi hija se preocupa porque no como casi nada. No, olvide lo que dije, es al revés."
+      6. [sueno] "Ay no, casi no duermo, mija, me despierto sudada y con dolor, y no sé si es de noche o de día a veces, todo se me revuelve."
 
   - **caso_tray_pac_42_00021_3** / capa2_ruidosa — real: **verde**, predicho: **rojo** — con interrupción de tercero
     Hallazgos: RED-NEURO ("confusión")
@@ -856,24 +739,6 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues el apetito lo tengo un poco bajo, como que no me provoca comer igual que antes, pero de todas maneras algo como. No es que no coma nada, pero sí menos cantidad."
       6. [sueno] "Ay, el sueño sí lo tengo bastante alterado, me despierto varias veces en la noche por el dolor y me cuesta volver a dormirme, así que descanso poquito."
 
-  - **caso_tray_pac_42_00023_1** / capa2_ruidosa — real: **verde**, predicho: **rojo** — con interrupción de tercero
-    Hallazgos: RED-NEURO ("confundo")
-      1. [dolor] "¿Ayer? Ay, espere... ¿fue ay- la operación o [inaudible] Ya me confundo con los días... el dolor así como un poquito molesto, más o menos a la mitad, no sé [inaudible] decirle."
-      2. [fiebre] "Sí, me la tomé... o [inaudible] que fue mi [inaudible] la [inaudible] la tomó, no sé, marcó algo así como treinta [inaudible] si- y algo, [inaudible] muy alta pero ta- fría, ¿me entiende?"
-      3. [movilidad] "Pues... me cuesta un poco, toca que me ayuden a levantarme, así despacito, no puedo yo solita todavía... es normal eso, ¿no? Es que no me acuerdo si el médico me dijo cuánto tiempo iba a durar así."
-      4. [herida] "Ay, sí, la vi como rojita alrededor, un poquito no más, no sé si es normal o no... no le he visto que salga nada raro, solo eso rojito."
-      5. [?] "He comido bien, gracias a Dios, como siempre, no ha habido problema con eso... ay espere, ¿usted me preguntó del dolor ya? Es que se me olvida si ya contesté eso."
-      6. [dolor] "Pues no he dormido tan bien como antes, me despierto un poco en la noche, no sé si es por el dolor o porque ya estoy vieja y así duermo yo, jeje."
-
-  - **caso_tray_pac_42_00024_1** / capa2_ruidosa — real: **verde**, predicho: **rojo** — con interrupción de tercero
-    Hallazgos: RED-NEURO ("confundo")
-      1. [dolor] "¿Cirugía... ya me la hicieron? Ay perdone, es que me confundo con los días... ¿hoy es martes? Del dolor, pues casi no siento nada, como un uno, por ahí en el pecho, no sé si es hoy o ayer que me operaron."
-      2. [fiebre] "Ay sí, me la tomaron... creo que decía como 37 y algo, ¿eso es mucho? No he sentido escalofríos, pero es que se me olvida si fue hoy o ayer que me la midieron."
-      3. [movilidad] "Pues me muevo despacito, como esperaba el doctor, no sé si eso está bien o mal... ¿usted me había dicho algo de eso antes? Es que ando como perdido con los días."
-      4. [herida] "Ahí la he visto un poquito rojita, como un enrojecimiento leve, pero no le he visto que salga nada raro ni mal olor... ¿eso es normal o me tengo que preocupar? Es que no recuerdo si ya le había contado esto."
-      5. [apetito] "He comido normal, como siempre, sin náuseas ni nada raro... aunque no sé si eso fue hoy o ayer, se me revuelven los días, disculpe. No, olvide lo que dije, es al revés."
-      6. [sueno] "He dormido como raro, medio alterado, no sé si es por los nervios o por la operación... me despierto y no sé ni qué hora es, todo se me mezcla."
-
   - **caso_tray_pac_42_00025_7** / capa2_ruidosa — real: **amarillo**, predicho: **verde**
     Hallazgos: (ninguno)
       1. [dolor] "¡Ay doctor, gracias a Dios por llamar! El dolor está como en un 3, ahí en la herida... pero ¿eso es normal? ¿o debería preocuparme? pues"
@@ -892,17 +757,8 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues la verdad he comido menos de lo normal, como que no me provoca mucho... ¿eso es malo doctor? Es que con tanta preocupación se me quita hasta el hambre. ... Digamos que sí, pero no tanto."
       6. [dolor] "Ay doctor, el sueño ha sido lo peor, casi no duermo, me despierto asustada pensando en el dolor y en si todo va bien... ¡dígame que esto es normal, por favor!"
 
-  - **caso_tray_pac_42_00026_7** / capa2_ruidosa — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
-      1. [dolor] "¿Cómo dijo? Ay perdón, es [inaudible] espere, ¿la cirugía fue el jueves o [inaudible] viernes? [inaudible] que el dolor sí está fu- como un 6, y no sé [inaudible] es normal a estos días."
-      2. [dolor] "Sí, señora, ayer o antier me sentí como afiebrada, tenía el cuerpo caliente... creo que como 38, no sé si eso es mucho. ¿Eso es grave o es normal a los días que voy?"
-      3. [movilidad] "Ah, eso sí, para caminar no me cuesta nada, camino normal... es más raro porque me duele pero me muevo bien, no sé por qué será eso."
-      4. [herida] "Ay sí, eso sí me tiene preocupada... la he visto como con un líquido, amarillo creo, saliendo de ahí. No sé si eso es normal o si me tengo que asustar, es que no me acuerdo si eso pasó desde el principio o apenas ayer. Bueno, eso dije, pero ayer le dije lo contrario."
-      5. [?] "No, casi no me da hambre, como poquito y a veces ni eso... no sé si es por los medicamentos o qué será, disculpe ¿me preguntó del sueño también o eso ya fue?"
-      6. [sueno] "Ay no, para nada, duermo muy mal, me despierto varias veces, no sé si es por el dolor o por los nervios... la verdad ya ni sé qué día es hoy de tanto que no descanso."
-
-  - **caso_tray_pac_42_00026_14** / capa2_ruidosa — real: **rojo**, predicho: **verde** — con interrupción de tercero
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00026_14** / capa2_ruidosa — real: **rojo**, predicho: **amarillo** — con interrupción de tercero
+    Hallazgos: AMBER-FEVER ("acalorada")
       1. [dolor] "Ay, pues... más o menos, ahí voy sobreviviendo. ¿Usted cómo ha estado, todo bien por allá? Espere, en realidad no, creo que sí me duele bastante."
       2. [fiebre] "Uy, no sé, no le he puesto mucho cuidado a eso... aunque sí me he sentido como acalorada a ratos. ¿Usted cree que eso es normal después de la cirugía?"
       3. [movilidad] "Ah, eso sí, camino normal, no hay problema con eso... oiga, ¿usted sabe si esta llamada dura mucho? Es que tengo algo pendiente ahorita."
@@ -919,17 +775,8 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "..."
       6. [sueno] "Uy, dormir no, casi nada... me despierto a cada rato, no sé si por el dolor o por los ruidos, todo revuelto ahí en la noche, doctor."
 
-  - **caso_tray_pac_42_00027_7** / capa2_ruidosa — real: **rojo**, predicho: **verde** — con interrupción de tercero
-    Hallazgos: (ninguno)
-      1. [?] "Ehh... ¿cómo así, del día de hoy o de cuando me operaron? Es que se me revuelven los días... creo que un 6, más o menos, ahorita me duele bastante."
-      2. [dolor] "Sí, sí... ayer o antier me sentí como con frío, temblando, y creo que me la tomé... ¿o eso fue hoy? Marcaba como 39 algo, no me acuerdo bien."
-      3. [fiebre] "Pues... me cuesta un poco, ando despacito, agarrado de algo. No sé si es normal a estos días o qué, pero no me siento con muchas fuerzas. ... Pues no sé, más o menos."
-      4. [movilidad] "Sí señorita, la he visto un poco roja alrededor, como enrojecidita... no sé si eso es normal o no, no me acuerdo si antes se veía así también."
-      5. [herida] "No, la verdad casi no me da hambre, como poquito y ya me siento lleno... y duermo mal también, me despierto mucho, no sé ni qué día es a veces."
-      6. [sueno] "Duermo muy mal, señorita, me despierto varias veces por el dolor y sudando... a veces no sé si es de noche o de día, todo se me revuelve."
-
-  - **caso_tray_pac_42_00027_14** / capa2_ruidosa — real: **rojo**, predicho: **verde** — con interrupción de tercero
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00027_14** / capa2_ruidosa — real: **rojo**, predicho: **amarillo** — con interrupción de tercero
+    Hallazgos: AMBER-FEVER ("38")
       1. [dolor] "Ay, no, más o menos no más, un dolorcito ahí normal de la operación, nada del otro mundo. Si acaso un 6, pero eso ya se me pasa solo, no se preocupe."
       2. [dolor] "Pues sí me he sentido como con un poco de calorcito, pero nada de escalofríos ni nada raro. Me tomé la temperatura y salió como en 38, pero eso debe ser del calor de acá no más, doctor. ... Ahí vamos, no le podría decir con seguridad."
       3. [movilidad] "Ay, pues ahí vamos despacito, un poco más difícil de lo normal [inaudible] levantarme, pero eso es normal después de [inaudible] operación, no es nada [inaudible] Ya me [inaudible] poco a [inaudible] no se preocupe."
@@ -946,8 +793,8 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay pues casi no me provoca comer, pero eso es normal con tanto medicamento, no me preocupo por eso, algo como paso."
       6. [sueno] "Pues me despierto un poquito por la molestia, pero duermo mis horitas, no es nada de qué alarmarse, tranquila."
 
-  - **caso_tray_pac_42_00028_3** / capa2_ruidosa — real: **verde**, predicho: **rojo** — con interrupción de tercero
-    Hallazgos: RED-NEURO ("confunde"), AMBER-FEVER ("fiebre")
+  - **caso_tray_pac_42_00028_3** / capa2_ruidosa — real: **verde**, predicho: **amarillo** — con interrupción de tercero
+    Hallazgos: AMBER-FEVER ("fiebre")
       1. [dolor] "Ay, ¿cómo así, perdone? ¿Me pregunta de hoy o de cuando me operaron... eso fue el lunes o el martes? Ahorita siento como un tres, por ahí en la cadera... o la rodilla, ya se me confunde cuál fue."
       2. [fiebre] "[inaudible] fiebre no sé... me tomaron la temperatura hace [inaudible] rato y creo que estaba normal, como en 37, pero no me acuerdo si fue hoy o ayer. Escalofríos no he sentido, eso [inaudible] se [inaudible] puedo asegurar."
       3. [movilidad] "Sí, más o menos bien, doctor... digo, señorita. Me levanto de la cama sin mucho problema, camino con el andador o lo que me dieron ahí, no me acuerdo cómo se llama, pero sí me muevo normal."
@@ -955,23 +802,14 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay, es que no tengo casi ganas de comer, señorita... me traen la bandeja y como poquito, no sé si es por los medicamentos o qué. Náuseas no, pero la comida no me provoca casi nada."
       6. [dolor] "Duermo por ratos, señorita, me despierto y no sé si es por el dolor o porque ya me acostumbré a otro horario en el hospital... pero no es que sea muy grave, así como que me despierto y ya."
 
-  - **caso_tray_pac_42_00028_7** / capa2_ruidosa — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00028_7** / capa2_ruidosa — real: **rojo**, predicho: **amarillo**
+    Hallazgos: AMBER-WOUND ("líquido ahí, como amarillito")
       1. [?] "Ay, pues no ha sido tan grave, algo de dolor ahí en la cadera, será un 5 más o menos, pero uno aguanta, no se preocupe. parcero"
       2. [fiebre] "Pues [inaudible] me [inaudible] sen- un poco calientica, la tomé y marcaba como [inaudible] y algo, pero yo creo que [inaudible] [inaudible] calor de [inaudible] casa, no le he puesto mucho cuidado."
       3. [?] "Ay no, en eso sí estoy bien, camino normal, sin problema, ahí me muevo tranquila por la casa."
       4. [herida] "Pues sí le sale un poquito de líquido ahí, como amarillito, pero no es mucho, yo creo que es normal de la sanada, no me preocupa mucho."
       5. [apetito] "Este... no, nada, siga con la otra pregunta."
       6. [?] "Pues duermo poquito, me despierto varias veces en la noche, pero eso es normal a esta edad, no es nada grave, ya cogeré el sueño."
-
-  - **caso_tray_pac_42_00028_14** / capa2_ruidosa — real: **rojo**, predicho: **amarillo** — con interrupción de tercero
-    Hallazgos: AMBER-FEVER ("calentura")
-      1. [dolor] "¡Ay, doctor, qué bueno que llama! Mire, el dolor está como en un 5, pero es que hoy amanecí con calentura también, ¿eso es normal? Estoy muy asustada, no sé qué hacer. ... No me acuerdo bien, la verdad."
-      2. [fiebre] "Sí señor, me tomé la temperatura y marcó 38.1°C, y sí he sentido como escalofríos también. ¿Eso es grave, doctor? Es que también la herida se ve un poquito rojita y me tiene con los nervios de punta."
-      3. [movilidad] "Ay, doctor, eso es lo peor, casi no puedo ni levantarme sola, siento la pierna como que no responde, muy incapacitada me siento. Me da miedo caerme, ¿usted cree que eso es normal o me está pasando algo malo? ome"
-      4. [herida] "Sí doctor, la [inaudible] con un enrojecimiento leve alrededor, no sale nada de líquido gracias a Dios- pero [inaudible] me preocupa [inaudible] ¿será que [inaudible] [inaudible] está infectando? Dígame [inaudible] verd- por [inaudible]"
-      5. [apetito] "Ay, casi no me provoca comer nada, doctor, se me ha ido el apetito por completo, como poquito y a las fuerzas. Con tanta preocupación ni hambre me da."
-      6. [sueno] "No, doctor, para nada, duermo muy mal, me despierto varias veces por el dolor y por los nervios, casi no descanso nada. Dígame, ¿todo esto es normal o debo preocuparme más?"
 
   - **caso_tray_pac_42_00029_7** / capa2_ruidosa — real: **amarillo**, predicho: **verde**
     Hallazgos: (ninguno)
@@ -982,17 +820,8 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues la verdad el apetito lo tengo bastante disminuido, casi no me provoca comer, como poquito y a veces me toca obligarme."
       6. [sueno] "El sueño lo he tenido muy alterado, me despierto varias veces en la noche y me cuesta volver a conciliar el sueño."
 
-  - **caso_tray_pac_42_00030_3** / capa2_ruidosa — real: **amarillo**, predicho: **verde** — con interrupción de tercero
-    Hallazgos: (ninguno)
-      1. [dolor] "Buenas, el dolor lo siento en la zona donde me operaron, como un ardorcito. Ahorita está como en un 4, no es insoportable pero sí molesta bastante."
-      2. [fiebre] "Sí, me he sentido un poco caliente, como afiebrada, me tomé la temperatura y marcó 37.8. No he tenido escalofríos ni sudoración, solo esa sensación de calorcito."
-      3. [movilidad] "Ay no, en eso sí estoy bien, me puedo levantar y caminar normal, no siento que me limite para moverme."
-      4. [?] "La herida la veo normal, no tiene enrojecimiento raro ni hinchazón, tampoco le sale nada ni huele mal. Se ve como debe ser, limpiecita."
-      5. [apetito] "Pues la verdad el apetito lo tengo muy bajo, casi no me provoca comer nada, como poquito y a la fuerza no más."
-      6. [dolor] "La verdad he dormido muy mal, me despierto varias veces en la noche por el dolor y por esa sensación de calor, casi no descanso bien."
-
-  - **caso_tray_pac_42_00030_7** / capa2_ruidosa — real: **rojo**, predicho: **verde** — con interrupción de tercero
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00030_7** / capa2_ruidosa — real: **rojo**, predicho: **amarillo** — con interrupción de tercero
+    Hallazgos: AMBER-FEVER ("acalorada")
       1. [dolor] "Ay pues... más o menos, ahí normal, como uno se siente después de esas cosas. ¿Usted qué comió hoy? No, olvide lo que dije, es al revés."
       2. [dolor] "Uy, no sé, no le he puesto mucha atención a eso... he estado como acalorada un poco pero no sé si eso cuenta. ¿Usted cree que eso es normal por el clima de aquí?"
       3. [movilidad] "[inaudible] sí, ahí camino normal, [inaudible] problema... oiga, ¿y usted hace mucho este trabajo de las llamadas?"
@@ -1000,23 +829,14 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay, no sé, como que no me provoca mucho comer últimamente... pero bueno, uno con el estrés a veces no come bien, ¿no? ¿Usted cree que eso influye?"
       6. [sueno] "Pues... no muy bien la verdad, me despierto varias veces, pero no sé, será que estoy nerviosa no más. ¿Ya casi terminamos? Es que me da como pereza hablar de esto."
 
-  - **caso_tray_pac_42_00030_14** / capa2_ruidosa — real: **rojo**, predicho: **verde** — con interrupción de tercero
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00030_14** / capa2_ruidosa — real: **rojo**, predicho: **amarillo** — con interrupción de tercero
+    Hallazgos: AMBER-FEVER ("38")
       1. [dolor] "Ay, pues normal, un poquito de molestia nomás, nada que no se aguante... como un 6 tal vez, pero no es tan grave, ahí voy."
       2. [fiebre] "Pues sí, me he sentido como tibia, calientica, pero no creo que sea nada, capaz es el clima... me tomé la temperatura y marcó como 38, pero eso no es mucho, ¿cierto?"
       3. [movilidad] "Pues... ha sido un poquito más difícil de lo normal, como que no me quiero ni levantar de la cama, pero eso es porque estoy vaga nomás, no es que no pueda."
       4. [herida] "Se ve un poquito rojita alrededor, pero nada de otro mundo, no le sale nada raro ni nada, seguro es normal por la cicatrización."
       5. [apetito] "Pues como poquito, casi no me provoca nada, pero eso también es normal después de una operación, ¿no? No es que esté enferma ni nada."
       6. [dolor] "Pues duermo poquito, me despierto varias veces, pero es que uno no está acostumbrado a la cama del hospital... no es nada grave, ya se me pasará."
-
-  - **caso_tray_pac_42_00032_14** / capa2_ruidosa — real: **verde**, predicho: **amarillo** — con interrupción de tercero
-    Hallazgos: AMBER-FEVER ("fiebre")
-      1. [dolor] "Ay, no sé, se me olvidó lo que iba a decir."
-      2. [fiebre] "No señor, para nada, me he sentido bien fresco. Me tomé la temperatura y estaba normalita, como en 36 y algo, nada de fiebre ni escalofríos. Bueno, eso dije, pero ayer le dije lo contrario."
-      3. [movilidad] "Sí señor, camino bien, sin problema. Hasta he dado mis vueltecitas por la casa sin necesidad de ayuda."
-      4. [herida] "No, doctor, la herida se ve bien tranquila, como debe ser. Nada raro, ni rojez ni esas cosas, todo normal por ahí. ome"
-      5. [apetito] "Como bien, doctor, con ganas normales, no me ha faltado el apetito para nada."
-      6. [sueno] "Duermo bien, tranquilo, sin despertarme por nada raro. Todo bien por ese lado, doctor."
 
   - **caso_tray_pac_42_00033_3** / capa2_ruidosa — real: **verde**, predicho: **amarillo** — con interrupción de tercero
     Hallazgos: AMBER-FEVER ("fiebre")
@@ -1037,7 +857,7 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       6. [sueno] "Sí señora, he dormido bien, normal... pero ¿usted cree que es bueno dormir tanto? Ay, disculpe que pregunte tanto, es que todo esto me tiene con los nervios de punta."
 
   - **caso_tray_pac_42_00035_3** / capa2_ruidosa — real: **verde**, predicho: **amarillo**
-    Hallazgos: AMBER-FEVER ("fiebre"), AMBER-WOUND ("pus")
+    Hallazgos: AMBER-FEVER ("fiebre")
       1. [dolor] "¡Ay, no sé, como un 3! Pero dígam- ¿eso es normal o me tengo que preocupar? Es que me da mucho miedo que algo esté mal, ¿sí?"
       2. [fiebre] "Sí señor, me tomé la temperatura y marcó 37.5°C... ¿eso ya es fiebre? ¡Ay, me preocupa mucho, dígame la verdad porfa!"
       3. [movilidad] "Pues la verdad me he podido mover normal, camino sin problema... pero igual ¿eso está bien? ¿No debería sentir más dolor al moverme? ¡Ay, dígame que todo está bien, por favor!"
@@ -1120,15 +940,6 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues el apetito lo he notado un poquito bajo, como que no me provoca comer tanto como antes, pero algo como."
       6. [sueno] "Ay, el sueño sí lo he tenido bien alterado, me despierto varias veces por el dolor y luego no logro volver a dormir fácil."
 
-  - **caso_tray_pac_42_00004_3** / capa1_limpia — real: **verde**, predicho: **amarillo**
-    Hallazgos: AMBER-FEVER ("fiebre")
-      1. [dolor] "Ay, pues hoy lo siento como en un 3, algo manejable con las pastillas que me mandaron. Anoche estaba un poquito más molesto pero ya se calmó."
-      2. [fiebre] "Sí señor, me la tomé hace un rato y estaba en 37.1°C, así que nada de fiebre por ahora, gracias a Dios."
-      3. [movilidad] "Pues me muevo despacito, como es de esperarse por la cirugía, pero sí he podido caminar un poco por la casa con cuidado de no forzar el brazo."
-      4. [herida] "No, la he visto bien, normalita, sin enrojecimiento ni nada raro que salga de ahí. La estoy cuidando como me indicaron."
-      5. [apetito] "He comido normal, casi igual que antes, con ganas de comer mis comiditas de siempre, sin problema."
-      6. [sueno] "He dormido bien, gracias a Dios, sin muchas interrupciones, un sueño normal como siempre."
-
   - **caso_tray_pac_42_00006_3** / capa1_limpia — real: **amarillo**, predicho: **verde**
     Hallazgos: (ninguno)
       1. [dolor] "Ay, pues ahí normal, nada del otro mundo. Un dolorcito en la zona de la herida, será como un 5, pero eso es de esperarse, ¿no?"
@@ -1155,15 +966,6 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       4. [herida] "La he visto normalita doctor, sin enrojecimiento ni nada raro, ni mal olor... pero es que no sé bien cómo revisarla, ¿usted cree que la estoy viendo bien? Me da miedo no darme cuenta si algo anda mal."
       5. [apetito] "Pues doctor, la verdad he comido un poquito menos de lo normal, como que no me da mucha hambre... ¿eso es preocupante? ¿No será que necesito comer más para recuperarme bien?"
       6. [sueno] "He dormido bien normalito doctor, sin problema para dormir... pero dígame, ¿todo lo que le he contado está bien? ¡Es que me tiene con los nervios de punta pensar que algo pueda estar mal!"
-
-  - **caso_tray_pac_42_00008_14** / capa1_limpia — real: **verde**, predicho: **rojo**
-    Hallazgos: RED-NEURO ("confunden"), AMBER-FEVER ("calentura")
-      1. [dolor] "Ay, ¿cómo así, perdón? ¿Me pregunta de la cadera o de la rodilla? Es que ya ni me acuerdo bien qué día fue la operación... pero el dolor está como un 2, algo suave."
-      2. [fiebre] "No señor, no he sentido nada de eso... o espere, ¿usted me pregunta de esta semana o de cuando salí del hospital? Es que se me confunden los días, pero ahorita me siento normal, sin calentura."
-      3. [movilidad] "Pues... me he estado moviendo bien, gracias a Dios, sin mucho problema para levantarme. Ay pero espere, ¿usted me está preguntando de esta semana o de la primera vez que me pararon después de la operación? Es que ya no sé ni qué día es hoy."
-      4. [herida] "Pues la miré esta mañana, o ayer, no me acuerdo bien, pero se ve tranquila, sin nada raro, ni rojo ni con líquido ni olor feo, doctor."
-      5. [apetito] "Ay sí, como bien, gracias a Dios... ¿o me preguntó si comí hoy? Es que ya no sé si desayuné o eso fue ayer, pero el apetito lo tengo normal, como siempre."
-      6. [sueno] "He dormido bien, tranquila, sin problema... aunque espere, ¿me pregunta de anoche o de toda la semana? Ay, ya ni sé, pero duermo normal, gracias a Dios."
 
   - **caso_tray_pac_42_00010_3** / capa1_limpia — real: **amarillo**, predicho: **verde**
     Hallazgos: (ninguno)
@@ -1237,6 +1039,15 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay pues sí, como normal, gracias a Dios no me falta el hambre. Oiga, ¿y usted no sabe si va a llover hoy? Es que quiero salir al patio un rato."
       6. [sueno] "Ah, duermo bien, gracias a Dios, como un bebé casi. Bueno mijo, ¿ya casi terminamos? Es que se me está enfriando el caldo."
 
+  - **caso_tray_pac_42_00015_3** / capa1_limpia — real: **amarillo**, predicho: **verde**
+    Hallazgos: (ninguno)
+      1. [dolor] "Ay, no, tranquila, ha sido nada del otro mundo, un dolorcito ahí en la herida, como un 4 tal vez, pero es soportable."
+      2. [fiebre] "Sí, me la tomé y estaba normalita, como en 37, nada de fiebre ni escalofríos, todo bien por ese lado."
+      3. [movilidad] "Pues me muevo despacito, obvio, uno recién operado no va a andar corriendo, pero nada grave, ahí voy caminando poquito a poquito."
+      4. [herida] "Se ve un poquito rojita ahí alrededor, pero nada de hinchazón ni de esas cosas raras que salgan, yo creo que es normal de la cicatrización."
+      5. [apetito] "Como un poquito menos que antes, pero como, no crea, no es que no me provoque nada, solo un poco más despacio con la comida."
+      6. [sueno] "Pues no he dormido muy bien, la verdad, me despierto varias veces, pero eso es normal después de una operación, no le pare muchas bolas a eso."
+
   - **caso_tray_pac_42_00016_1** / capa1_limpia — real: **amarillo**, predicho: **verde**
     Hallazgos: (ninguno)
       1. [dolor] "¡Ay doctor, es que no sé bien! Yo creo que un 5, pero es que me preocupa muchísimo, ¿eso es normal o me tengo que asustar? Dígame que no es grave, por favor."
@@ -1246,23 +1057,14 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues fíjese que he comido normal, gracias a Dios, no he perdido el apetito. Pero bueno, ¿eso está bien también? Es que con todo lo demás uno ya no sabe qué esperar."
       6. [sueno] "He dormido bien, la verdad, casi normal. Pero doctor, dígame ya, ¿todo esto que le conté está bien o me tengo que preocupar por algo? Es que la ansiedad no me deja tranquila."
 
-  - **caso_tray_pac_42_00017_7** / capa1_limpia — real: **rojo**, predicho: **amarillo**
-    Hallazgos: AMBER-WOUND ("pus")
+  - **caso_tray_pac_42_00017_7** / capa1_limpia — real: **rojo**, predicho: **verde**
+    Hallazgos: (ninguno)
       1. [dolor] "Ay, no, tranquila doctora, un poquito molesto no más, nada del otro mundo, uno aguanta."
       2. [fiebre] "Sí, me tomé la temperatura ayer, marcó como 37 y algo, nada de escalofríos ni cosas raras, tranquila."
       3. [movilidad] "Pues despacito, como es normal después de esto, pero me muevo, no crea que estoy tan mal."
       4. [herida] "Se ve un poquito rojita ahí en el borde, pero nada de esas cosas de pus ni nada raro, yo creo que es normal de la cicatrización, doctora."
       5. [apetito] "Pues como poquito, se me ha quitado un poco las ganas, pero algo paso, no se preocupe, eso ya va a mejorar."
       6. [sueno] "Pues no muy bien que digamos, me despierto varias veces, pero uno ya sabe que después de una operación así es normal, no es nada grave."
-
-  - **caso_tray_pac_42_00017_14** / capa1_limpia — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
-      1. [dolor] "¿Cómo dice? Ay, disculpe... el dolor... uy no sé bien, como un cinco creo, por la barriga, donde me operaron. Es que se me olvida si fue ayer o hace tres días la operación, perdone."
-      2. [fiebre] "Sí, ha habido momentos así como de frío, sudando... me tomaron la temperatura y creo que marcó como 38, algo así, no me acuerdo bien la hora ni el día, discúlpeme."
-      3. [movilidad] "Pues me muevo poquito, con ayuda, despacito... es que me canso rápido, no sé si es normal a estos días o no, ya perdí la cuenta de cuántos llevo."
-      4. [herida] "Ay sí, doctor... eh, mi hija me dijo que vio como un líquido, amarillo creo, saliendo ahí de la herida, no sé bien si eso es normal, me preocupa un poco."
-      5. [apetito] "Ay no, casi no me provoca comer nada, todo me da como asco, mi señora se preocupa porque como poquito."
-      6. [dolor] "No, duermo muy mal, me despierto varias veces, no sé si es por el dolor o los nervios, ya perdí la cuenta de las noches así."
 
   - **caso_tray_pac_42_00019_1** / capa1_limpia — real: **amarillo**, predicho: **verde**
     Hallazgos: (ninguno)
@@ -1273,23 +1075,14 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay, la comida... no sé, no me provoca mucho, todo me sabe raro. Pero bueno, ¿usted no me iba a preguntar sobre el sueño también?"
       6. [sueno] "Ay, hija, esas noches larguísimas, uno da vueltas y vueltas... pero no quiero quitarle más tiempo, ¿ya casi terminamos?"
 
-  - **caso_tray_pac_42_00019_7** / capa1_limpia — real: **rojo**, predicho: **verde**
+  - **caso_tray_pac_42_00019_14** / capa1_limpia — real: **rojo**, predicho: **verde**
     Hallazgos: (ninguno)
-      1. [dolor] "Buenas, mijo. El dolor lo siento en el pecho, donde la cirugía, y hoy lo sentiría como un 5, más incómodo que otros días."
-      2. [dolor] "Sí señor, me he sentido como afiebrada, me tomé la temperatura y marcó 38.2. También he sentido un poco de escalofrío."
-      3. [movilidad] "Ay, muy mal, la verdad. Antes me movía sola sin problema y ahora casi no puedo levantarme, necesito que alguien me ayude para todo."
-      4. [herida] "Pues la he visto un poco enrojecida alrededor, un eritema leve como le dicen, pero no le he visto secreción ni mal olor, gracias a Dios."
-      5. [apetito] "Ay no, casi no me provoca comer nada, se me ha ido mucho el apetito estos días, como poquito y a las fuerzas."
-      6. [sueno] "No, mijo, he dormido muy mal, me despierto varias veces por el dolor y el malestar, casi no descanso."
-
-  - **caso_tray_pac_42_00020_14** / capa1_limpia — real: **verde**, predicho: **rojo**
-    Hallazgos: RED-NEURO ("confunden")
-      1. [dolor] "Ay, disculpe, ¿me repite? Es que... creo que ha sido leve, poquito no más, como un 2, pero espere, ¿estamos hablando de hoy o de ayer? Ya ni me acuerdo bien qué día es."
-      2. [fiebre] "No, no, fiebre no he sentido... creo que me tomé la temperatura ayer, o antier, no sé bien, pero me acuerdo que decía como 36 y algo, normalita."
-      3. [movilidad] "Eso sí me acuerdo mejor, me he movido bien, normal, sin problema para caminar ni nada... aunque espere, ¿usted me preguntó por hoy o por cuando salí de la cirugía? Es que se me mezclan los días."
-      4. [herida] "No, doctor... digo, no señor, la he visto normal, sin nada raro, ni rojo ni con esas cosas que dice. Ay perdón, ¿usted me preguntó de la herida de ahora o de cuando me la revisaron en el hospital?"
-      5. [apetito] "No, como bien, tengo ganas de comer normal... espere, ¿ya es hora del almuerzo? Perdón, se me fue la cabeza un momento, ¿qué me preguntaba?"
-      6. [sueno] "He dormido bien, normal, sin despertarme por dolor ni nada... aunque, uy, ¿usted me llamó ayer también o es la primera vez? Perdóneme, es que se me confunden las llamadas."
+      1. [dolor] "Ay, ¿cómo así, mija? Espere... ¿la cirugía fue el jueves o fue la otra semana? Es que el dolor lo siento como un 6, ahí en el pecho, pero se me confunden los días."
+      2. [fiebre] "Ay sí, creo que sí... me sentí como con mucho calor anoche, toda sudada, y frío al mismo tiempo, qué raro. No sé si me la tomé o fue mi hija, pero me acuerdo un número como... ¿39 algo? No estoy segura, mija."
+      3. [movilidad] "Pues... uy, me cuesta un poco, mija, me siento como pesada, despacito me muevo, no sé si es normal o no a estos días... ¿usted sabe cuántos días llevo ya? Se me pierden las cuentas."
+      4. [herida] "Ay, la miré ayer o antier, no sé bien... la vi como rojita, un poquito, alrededor mija, pero no le vi que saliera nada raro ni mal olor, gracias a Dios."
+      5. [apetito] "Ay no, mija, casi no me provoca comer, todo me da como asco o pereza, apenas unas cucharaditas de sopa y ya. Mi hija se preocupa porque no como casi nada."
+      6. [sueno] "Ay no, casi no duermo, mija, me despierto sudada y con dolor, y no sé si es de noche o de día a veces, todo se me revuelve."
 
   - **caso_tray_pac_42_00021_3** / capa1_limpia — real: **verde**, predicho: **rojo**
     Hallazgos: RED-NEURO ("confusión")
@@ -1309,15 +1102,6 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues el apetito lo tengo un poco bajo, como que no me provoca comer igual que antes, pero de todas maneras algo como. No es que no coma nada, pero sí menos cantidad."
       6. [sueno] "Ay, el sueño sí lo tengo bastante alterado, me despierto varias veces en la noche por el dolor y me cuesta volver a dormirme, así que descanso poquito."
 
-  - **caso_tray_pac_42_00023_1** / capa1_limpia — real: **verde**, predicho: **rojo**
-    Hallazgos: RED-NEURO ("confundo")
-      1. [dolor] "¿Ayer? Ay, espere... ¿fue ayer la operación o antier? Ya me confundo con los días... el dolor así como un poquito molesto, más o menos a la mitad, no sé cómo decirle."
-      2. [fiebre] "Sí, me la tomé... o creo que fue mi hija la que la tomó, no sé, marcó algo así como treinta y siete y algo, no muy alta pero tampoco fría, ¿me entiende?"
-      3. [movilidad] "Pues... me cuesta un poco, toca que me ayuden a levantarme, así despacito, no puedo yo solita todavía... es normal eso, ¿no? Es que no me acuerdo si el médico me dijo cuánto tiempo iba a durar así."
-      4. [herida] "Ay, sí, la vi como rojita alrededor, un poquito no más, no sé si es normal o no... no le he visto que salga nada raro, solo eso rojito."
-      5. [apetito] "He comido bien, gracias a Dios, como siempre, no ha habido problema con eso... ay espere, ¿usted me preguntó del dolor ya? Es que se me olvida si ya contesté eso."
-      6. [dolor] "Pues no he dormido tan bien como antes, me despierto un poco en la noche, no sé si es por el dolor o porque ya estoy vieja y así duermo yo, jeje."
-
   - **caso_tray_pac_42_00023_14** / capa1_limpia — real: **verde**, predicho: **amarillo**
     Hallazgos: AMBER-PAIN-SCORE-CTX ("7")
       1. [dolor] "Ay, no, tranquilo, casi ni se siente, un dolorcito por ahí de un 2, nada del otro mundo, mijo."
@@ -1326,15 +1110,6 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       4. [herida] "No, nada de eso, la veo limpiecita y normal, ni siquiera me duele al mirarla."
       5. [apetito] "Sí señor, como bien, con ganas, no ha habido ningún problema con eso."
       6. [sueno] "Sí, duermo bien, tranquila, sin vueltas ni nada, como una bebé, mijo."
-
-  - **caso_tray_pac_42_00024_1** / capa1_limpia — real: **verde**, predicho: **rojo**
-    Hallazgos: RED-NEURO ("confundo")
-      1. [dolor] "¿Cirugía... ya me la hicieron? Ay perdone, es que me confundo con los días... ¿hoy es martes? Del dolor, pues casi no siento nada, como un uno, por ahí en el pecho, no sé si es hoy o ayer que me operaron."
-      2. [fiebre] "Ay sí, me la tomaron... creo que decía como 37 y algo, ¿eso es mucho? No he sentido escalofríos, pero es que se me olvida si fue hoy o ayer que me la midieron."
-      3. [movilidad] "Pues me muevo despacito, como esperaba el doctor, no sé si eso está bien o mal... ¿usted me había dicho algo de eso antes? Es que ando como perdido con los días."
-      4. [herida] "Ahí la he visto un poquito rojita, como un enrojecimiento leve, pero no le he visto que salga nada raro ni mal olor... ¿eso es normal o me tengo que preocupar? Es que no recuerdo si ya le había contado esto."
-      5. [apetito] "He comido normal, como siempre, sin náuseas ni nada raro... aunque no sé si eso fue hoy o ayer, se me revuelven los días, disculpe."
-      6. [sueno] "He dormido como raro, medio alterado, no sé si es por los nervios o por la operación... me despierto y no sé ni qué hora es, todo se me mezcla."
 
   - **caso_tray_pac_42_00025_7** / capa1_limpia — real: **amarillo**, predicho: **verde**
     Hallazgos: (ninguno)
@@ -1354,17 +1129,8 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues la verdad he comido menos de lo normal, como que no me provoca mucho... ¿eso es malo doctor? Es que con tanta preocupación se me quita hasta el hambre."
       6. [dolor] "Ay doctor, el sueño ha sido lo peor, casi no duermo, me despierto asustada pensando en el dolor y en si todo va bien... ¡dígame que esto es normal, por favor!"
 
-  - **caso_tray_pac_42_00026_7** / capa1_limpia — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
-      1. [dolor] "¿Cómo dijo? Ay perdón, es que... espere, ¿la cirugía fue el jueves o el viernes? Es que el dolor sí está fuerte, como un 6, y no sé si es normal a estos días."
-      2. [dolor] "Sí, señora, ayer o antier me sentí como afiebrada, tenía el cuerpo caliente... creo que como 38, no sé si eso es mucho. ¿Eso es grave o es normal a los días que voy?"
-      3. [movilidad] "Ah, eso sí, para caminar no me cuesta nada, camino normal... es más raro porque me duele pero me muevo bien, no sé por qué será eso."
-      4. [herida] "Ay sí, eso sí me tiene preocupada... la he visto como con un líquido, amarillo creo, saliendo de ahí. No sé si eso es normal o si me tengo que asustar, es que no me acuerdo si eso pasó desde el principio o apenas ayer."
-      5. [apetito] "No, casi no me da hambre, como poquito y a veces ni eso... no sé si es por los medicamentos o qué será, disculpe ¿me preguntó del sueño también o eso ya fue?"
-      6. [sueno] "Ay no, para nada, duermo muy mal, me despierto varias veces, no sé si es por el dolor o por los nervios... la verdad ya ni sé qué día es hoy de tanto que no descanso."
-
-  - **caso_tray_pac_42_00026_14** / capa1_limpia — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00026_14** / capa1_limpia — real: **rojo**, predicho: **amarillo**
+    Hallazgos: AMBER-FEVER ("acalorada")
       1. [dolor] "Ay, pues... más o menos, ahí voy sobreviviendo. ¿Usted cómo ha estado, todo bien por allá?"
       2. [fiebre] "Uy, no sé, no le he puesto mucho cuidado a eso... aunque sí me he sentido como acalorada a ratos. ¿Usted cree que eso es normal después de la cirugía?"
       3. [movilidad] "Ah, eso sí, camino normal, no hay problema con eso... oiga, ¿usted sabe si esta llamada dura mucho? Es que tengo algo pendiente ahorita."
@@ -1381,17 +1147,8 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay no, casi no me da hambre, doctor... como poquitico, todo se me revuelve, ni ganas de comer tengo."
       6. [sueno] "Uy, dormir no, casi nada... me despierto a cada rato, no sé si por el dolor o por los ruidos, todo revuelto ahí en la noche, doctor."
 
-  - **caso_tray_pac_42_00027_7** / capa1_limpia — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
-      1. [dolor] "Ehh... ¿cómo así, del día de hoy o de cuando me operaron? Es que se me revuelven los días... creo que un 6, más o menos, ahorita me duele bastante."
-      2. [dolor] "Sí, sí... ayer o antier me sentí como con frío, temblando, y creo que me la tomé... ¿o eso fue hoy? Marcaba como 39 algo, no me acuerdo bien."
-      3. [fiebre] "Pues... me cuesta un poco, ando despacito, agarrado de algo. No sé si es normal a estos días o qué, pero no me siento con muchas fuerzas."
-      4. [movilidad] "Sí señorita, la he visto un poco roja alrededor, como enrojecidita... no sé si eso es normal o no, no me acuerdo si antes se veía así también."
-      5. [herida] "No, la verdad casi no me da hambre, como poquito y ya me siento lleno... y duermo mal también, me despierto mucho, no sé ni qué día es a veces."
-      6. [sueno] "Duermo muy mal, señorita, me despierto varias veces por el dolor y sudando... a veces no sé si es de noche o de día, todo se me revuelve."
-
-  - **caso_tray_pac_42_00027_14** / capa1_limpia — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00027_14** / capa1_limpia — real: **rojo**, predicho: **amarillo**
+    Hallazgos: AMBER-FEVER ("38")
       1. [dolor] "Ay, no, más o menos no más, un dolorcito ahí normal de la operación, nada del otro mundo. Si acaso un 6, pero eso ya se me pasa solo, no se preocupe."
       2. [dolor] "Pues sí me he sentido como con un poco de calorcito, pero nada de escalofríos ni nada raro. Me tomé la temperatura y salió como en 38, pero eso debe ser del calor de acá no más, doctor."
       3. [movilidad] "Ay, pues ahí vamos despacito, un poco más difícil de lo normal para levantarme, pero eso es normal después de la operación, no es nada grave. Ya me acostumbro poco a poco, no se preocupe."
@@ -1408,32 +1165,14 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay pues casi no me provoca comer, pero eso es normal con tanto medicamento, no me preocupo por eso, algo como paso."
       6. [sueno] "Pues me despierto un poquito por la molestia, pero duermo mis horitas, no es nada de qué alarmarse, tranquila."
 
-  - **caso_tray_pac_42_00028_3** / capa1_limpia — real: **verde**, predicho: **rojo**
-    Hallazgos: RED-NEURO ("confunde"), AMBER-FEVER ("fiebre")
+  - **caso_tray_pac_42_00028_3** / capa1_limpia — real: **verde**, predicho: **amarillo**
+    Hallazgos: AMBER-FEVER ("fiebre")
       1. [dolor] "Ay, ¿cómo así, perdone? ¿Me pregunta de hoy o de cuando me operaron... eso fue el lunes o el martes? Ahorita siento como un tres, por ahí en la cadera... o la rodilla, ya se me confunde cuál fue."
       2. [fiebre] "Mmm, fiebre no sé... me tomaron la temperatura hace un rato y creo que estaba normal, como en 37, pero no me acuerdo si fue hoy o ayer. Escalofríos no he sentido, eso sí se lo puedo asegurar."
       3. [movilidad] "Sí, más o menos bien, doctor... digo, señorita. Me levanto de la cama sin mucho problema, camino con el andador o lo que me dieron ahí, no me acuerdo cómo se llama, pero sí me muevo normal."
       4. [herida] "La herida... la vi esta mañana cuando me la revisó la enfermera, o fue ayer, no sé, pero se veía normal, sin nada raro, ni rojo ni con esos líquidos feos. No huele mal tampoco, eso sí me acuerdo."
       5. [apetito] "Ay, es que no tengo casi ganas de comer, señorita... me traen la bandeja y como poquito, no sé si es por los medicamentos o qué. Náuseas no, pero la comida no me provoca casi nada."
       6. [dolor] "Duermo por ratos, señorita, me despierto y no sé si es por el dolor o porque ya me acostumbré a otro horario en el hospital... pero no es que sea muy grave, así como que me despierto y ya."
-
-  - **caso_tray_pac_42_00028_7** / capa1_limpia — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
-      1. [dolor] "Ay, pues no ha sido tan grave, algo de dolor ahí en la cadera, será un 5 más o menos, pero uno aguanta, no se preocupe."
-      2. [fiebre] "Pues sí, me he sentido un poco calientica, la tomé y marcaba como 38 y algo, pero yo creo que es del calor de la casa, no le he puesto mucho cuidado."
-      3. [movilidad] "Ay no, en eso sí estoy bien, camino normal, sin problema, ahí me muevo tranquila por la casa."
-      4. [herida] "Pues sí le sale un poquito de líquido ahí, como amarillito, pero no es mucho, yo creo que es normal de la sanada, no me preocupa mucho."
-      5. [apetito] "Pues la verdad como poquito, no tengo mucha hambre estos días, pero no es nada, ya se me pasará, no se preocupe por eso."
-      6. [dolor] "Pues duermo poquito, me despierto varias veces en la noche, pero eso es normal a esta edad, no es nada grave, ya cogeré el sueño."
-
-  - **caso_tray_pac_42_00028_14** / capa1_limpia — real: **rojo**, predicho: **amarillo**
-    Hallazgos: AMBER-FEVER ("calentura")
-      1. [dolor] "¡Ay, doctor, qué bueno que llama! Mire, el dolor está como en un 5, pero es que hoy amanecí con calentura también, ¿eso es normal? Estoy muy asustada, no sé qué hacer."
-      2. [fiebre] "Sí señor, me tomé la temperatura y marcó 38.1°C, y sí he sentido como escalofríos también. ¿Eso es grave, doctor? Es que también la herida se ve un poquito rojita y me tiene con los nervios de punta."
-      3. [movilidad] "Ay, doctor, eso es lo peor, casi no puedo ni levantarme sola, siento la pierna como que no responde, muy incapacitada me siento. Me da miedo caerme, ¿usted cree que eso es normal o me está pasando algo malo?"
-      4. [herida] "Sí doctor, la veo con un enrojecimiento leve alrededor, no sale nada de líquido gracias a Dios, pero igual me preocupa muchísimo, ¿será que se me está infectando? Dígame la verdad, por favor."
-      5. [apetito] "Ay, casi no me provoca comer nada, doctor, se me ha ido el apetito por completo, como poquito y a las fuerzas. Con tanta preocupación ni hambre me da."
-      6. [sueno] "No, doctor, para nada, duermo muy mal, me despierto varias veces por el dolor y por los nervios, casi no descanso nada. Dígame, ¿todo esto es normal o debo preocuparme más?"
 
   - **caso_tray_pac_42_00029_7** / capa1_limpia — real: **amarillo**, predicho: **verde**
     Hallazgos: (ninguno)
@@ -1444,17 +1183,8 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues la verdad el apetito lo tengo bastante disminuido, casi no me provoca comer, como poquito y a veces me toca obligarme."
       6. [sueno] "El sueño lo he tenido muy alterado, me despierto varias veces en la noche y me cuesta volver a conciliar el sueño."
 
-  - **caso_tray_pac_42_00030_3** / capa1_limpia — real: **amarillo**, predicho: **verde**
-    Hallazgos: (ninguno)
-      1. [dolor] "Buenas, el dolor lo siento en la zona donde me operaron, como un ardorcito. Ahorita está como en un 4, no es insoportable pero sí molesta bastante."
-      2. [fiebre] "Sí, me he sentido un poco caliente, como afiebrada, me tomé la temperatura y marcó 37.8. No he tenido escalofríos ni sudoración, solo esa sensación de calorcito."
-      3. [movilidad] "Ay no, en eso sí estoy bien, me puedo levantar y caminar normal, no siento que me limite para moverme."
-      4. [herida] "La herida la veo normal, no tiene enrojecimiento raro ni hinchazón, tampoco le sale nada ni huele mal. Se ve como debe ser, limpiecita."
-      5. [apetito] "Pues la verdad el apetito lo tengo muy bajo, casi no me provoca comer nada, como poquito y a la fuerza no más."
-      6. [dolor] "La verdad he dormido muy mal, me despierto varias veces en la noche por el dolor y por esa sensación de calor, casi no descanso bien."
-
-  - **caso_tray_pac_42_00030_7** / capa1_limpia — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00030_7** / capa1_limpia — real: **rojo**, predicho: **amarillo**
+    Hallazgos: AMBER-FEVER ("acalorada")
       1. [dolor] "Ay pues... más o menos, ahí normal, como uno se siente después de esas cosas. ¿Usted qué comió hoy?"
       2. [dolor] "Uy, no sé, no le he puesto mucha atención a eso... he estado como acalorada un poco pero no sé si eso cuenta. ¿Usted cree que eso es normal por el clima de aquí?"
       3. [movilidad] "Ah sí, ahí camino normal, sin problema... oiga, ¿y usted hace mucho este trabajo de las llamadas?"
@@ -1462,32 +1192,14 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay, no sé, como que no me provoca mucho comer últimamente... pero bueno, uno con el estrés a veces no come bien, ¿no? ¿Usted cree que eso influye?"
       6. [sueno] "Pues... no muy bien la verdad, me despierto varias veces, pero no sé, será que estoy nerviosa no más. ¿Ya casi terminamos? Es que me da como pereza hablar de esto."
 
-  - **caso_tray_pac_42_00030_14** / capa1_limpia — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00030_14** / capa1_limpia — real: **rojo**, predicho: **amarillo**
+    Hallazgos: AMBER-FEVER ("38")
       1. [dolor] "Ay, pues normal, un poquito de molestia nomás, nada que no se aguante... como un 6 tal vez, pero no es tan grave, ahí voy."
       2. [fiebre] "Pues sí, me he sentido como tibia, calientica, pero no creo que sea nada, capaz es el clima... me tomé la temperatura y marcó como 38, pero eso no es mucho, ¿cierto?"
       3. [movilidad] "Pues... ha sido un poquito más difícil de lo normal, como que no me quiero ni levantar de la cama, pero eso es porque estoy vaga nomás, no es que no pueda."
       4. [herida] "Se ve un poquito rojita alrededor, pero nada de otro mundo, no le sale nada raro ni nada, seguro es normal por la cicatrización."
       5. [apetito] "Pues como poquito, casi no me provoca nada, pero eso también es normal después de una operación, ¿no? No es que esté enferma ni nada."
       6. [dolor] "Pues duermo poquito, me despierto varias veces, pero es que uno no está acostumbrado a la cama del hospital... no es nada grave, ya se me pasará."
-
-  - **caso_tray_pac_42_00031_3** / capa1_limpia — real: **verde**, predicho: **rojo**
-    Hallazgos: RED-NEURO ("confundo")
-      1. [dolor] "¿Cómo así? Ay, disculpe... ¿es de la cirugía de la semana pasada o la de ayer? Es que me confundo con las fechas... el dolor está como en un 1, poquito no más."
-      2. [fiebre] "Ay no sé, creo que no me he tomado la temperatura hoy... pero no he sentido escalofríos, así que supongo que estoy bien, ¿no? Ayer sí me la tomé y creo que estaba normal, como 36 y algo."
-      3. [movilidad] "Sí señora, camino normal, sin problema... aunque a veces se me olvida si ya me levanté hoy o fue ayer, jaja."
-      4. [herida] "Pues la vi esta mañana, o creo que fue anoche... y la vi normal, sin nada raro, ni rojo ni con esos líquidos feos."
-      5. [apetito] "Pues como un poquito menos que antes, no me da mucha hambre, pero como algo igual... ¿ya le había contado esto o es la primera vez que me pregunta?"
-      6. [sueno] "Ay, el sueño sí ha estado como raro, me despierto varias veces, no sé si es por la cirugía o por los nervios... ¿usted me había preguntado esto antes también?"
-
-  - **caso_tray_pac_42_00032_14** / capa1_limpia — real: **verde**, predicho: **amarillo**
-    Hallazgos: AMBER-FEVER ("fiebre")
-      1. [dolor] "Ay, no, muy poquito doctor, casi ni lo siento... un dos por ahí, nada preocupante, ya casi ni me acuerdo que me operaron."
-      2. [fiebre] "No señor, para nada, me he sentido bien fresco. Me tomé la temperatura y estaba normalita, como en 36 y algo, nada de fiebre ni escalofríos."
-      3. [movilidad] "Sí señor, camino bien, sin problema. Hasta he dado mis vueltecitas por la casa sin necesidad de ayuda."
-      4. [herida] "No, doctor, la herida se ve bien tranquila, como debe ser. Nada raro, ni rojez ni esas cosas, todo normal por ahí."
-      5. [apetito] "Como bien, doctor, con ganas normales, no me ha faltado el apetito para nada."
-      6. [sueno] "Duermo bien, tranquilo, sin despertarme por nada raro. Todo bien por ese lado, doctor."
 
   - **caso_tray_pac_42_00033_3** / capa1_limpia — real: **verde**, predicho: **amarillo**
     Hallazgos: AMBER-FEVER ("fiebre")
@@ -1517,7 +1229,7 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       6. [sueno] "Sí señora, he dormido bien, normal... pero ¿usted cree que es bueno dormir tanto? Ay, disculpe que pregunte tanto, es que todo esto me tiene con los nervios de punta."
 
   - **caso_tray_pac_42_00035_3** / capa1_limpia — real: **verde**, predicho: **amarillo**
-    Hallazgos: AMBER-FEVER ("fiebre"), AMBER-WOUND ("pus")
+    Hallazgos: AMBER-FEVER ("fiebre")
       1. [dolor] "¡Ay, no sé, como un 3! Pero dígame, ¿eso es normal o me tengo que preocupar? Es que me da mucho miedo que algo esté mal, ¿sí?"
       2. [fiebre] "Sí señor, me tomé la temperatura y marcó 37.5°C... ¿eso ya es fiebre? ¡Ay, me preocupa mucho, dígame la verdad porfa!"
       3. [movilidad] "Pues la verdad me he podido mover normal, camino sin problema... pero igual ¿eso está bien? ¿No debería sentir más dolor al moverme? ¡Ay, dígame que todo está bien, por favor!"
@@ -1634,15 +1346,6 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues doctor, la verdad he comido un poquito menos de lo normal, como que no me da mucha hambre... ¿eso es preocupante? ¿No será que necesito comer más para recuperarme bien? No, olvide lo que dije, es al revés."
       6. [sueno] "He dormido bien normalito doctor, sin problema para dormir... pero dígame, ¿todo lo que le he contado está bien? ¡Es que me tiene con los nervios de punta pensar que algo pueda estar mal!"
 
-  - **caso_tray_pac_42_00008_14** / capa2_ruidosa — real: **verde**, predicho: **rojo**
-    Hallazgos: RED-NEURO ("confunden"), AMBER-FEVER ("calentura")
-      1. [dolor] "Ay, ¿cómo así, perdón? ¿Me pregunta de la cadera o de la rodilla? Es que ya ni me acuerdo bien qué día fue la operación... pero el dolor está como un 2, algo suave."
-      2. [fiebre] "No señor, no he sentido nada de eso... o espere, ¿usted me pregunta de esta semana o de cuando salí del hospital? Es que se me confunden los días, pero ahorita me siento normal, sin calentura. pues"
-      3. [movilidad] "[inaudible] me he estado moviendo bien, gracias [inaudible] Dios, sin mucho problema para levantarme. Ay pero espere, [inaudible] me está pr- de esta semana o de la primera vez [inaudible] me pararon después de la operación? Es [inaudible] ya no sé ni [inaudible] día es [inaudible]"
-      4. [?] "Pues la miré esta mañana, o ayer, no me acuerdo bien, pero se ve tranquila, sin nada raro, ni rojo ni con líquido ni olor feo, doctor. ... Ahí vamos, no le podría decir con seguridad."
-      5. [apetito] "Ay sí, como bien, gracias a Dios... ¿o me preguntó si comí hoy? Es que ya no sé si desayuné o eso fue ayer, pero el apetito lo tengo normal, como siempre."
-      6. [sueno] "He dormido bien, tranquila, sin problema... aunque espere, ¿me pregunta de anoche o de toda la semana? Ay, ya ni sé, pero duermo normal, gracias a Dios."
-
   - **caso_tray_pac_42_00010_3** / capa2_ruidosa — real: **amarillo**, predicho: **verde** — con interrupción de tercero
     Hallazgos: (ninguno)
       1. [dolor] "Ay, pues... más [inaudible] menos, ahí voy tirando. ¿Usted [inaudible] me nota la voz?"
@@ -1715,6 +1418,15 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "[inaudible] pues sí, como nor- gracias a Dios no me falta el hambre. Oiga, ¿y usted no sab- si va a llover hoy? Es que qui- salir al patio [inaudible] rato."
       6. [?] "Ah, duermo bien, gracias a Dios, como un bebé casi. Bueno mijo, ¿ya casi terminamos? Es que se me está enfriando el caldo."
 
+  - **caso_tray_pac_42_00015_3** / capa2_ruidosa — real: **amarillo**, predicho: **verde** — con interrupción de tercero
+    Hallazgos: (ninguno)
+      1. [dolor] "Ay, no, tranquila, ha sido nada del otro mundo, un dolorcito ahí en la herida, como un 4 tal vez, pero es soportable."
+      2. [fiebre] "Sí, me la tomé y estaba normalita, como en 37, nada de fiebre ni escalofríos, todo bien por ese lado."
+      3. [movilidad] "Pues me muevo despacito, obvio, uno recién operado no va a andar corriendo, pero nada grave, ahí voy caminando poquito a poquito."
+      4. [herida] "Se ve un poquito rojita ahí alrededor, pero nada de hinchazón ni de esas cosas raras que salgan, yo creo que es normal de la cicatrización."
+      5. [apetito] "..."
+      6. [sueno] "Pues no he dormido muy bien, la verdad, me despierto varias veces, pero eso es normal después de una operación, no le pare muchas bolas a eso."
+
   - **caso_tray_pac_42_00016_1** / capa2_ruidosa — real: **amarillo**, predicho: **verde** — con interrupción de tercero
     Hallazgos: (ninguno)
       1. [dolor] "¡Ay doctor, es que no sé bien! Yo creo que un 5, pero es que me preocupa muchísimo, ¿eso es normal o me tengo que asustar? Dígame que no es grave, por favor."
@@ -1724,23 +1436,14 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues fíjese que he comido normal, gracias a Dios, no he perdido el apetito. Pero bueno, ¿eso está bien también? Es que con todo lo demás uno ya no sabe qué esperar."
       6. [sueno] "Este... no, nada, siga con la otra pregunta."
 
-  - **caso_tray_pac_42_00017_7** / capa2_ruidosa — real: **rojo**, predicho: **amarillo** — con interrupción de tercero
-    Hallazgos: AMBER-WOUND ("pus")
+  - **caso_tray_pac_42_00017_7** / capa2_ruidosa — real: **rojo**, predicho: **verde** — con interrupción de tercero
+    Hallazgos: (ninguno)
       1. [dolor] "Ay, no, tranquila doctora, un poquito molesto no más- nada del otro [inaudible] uno aguanta."
       2. [fiebre] "Sí, me tomé la temperatura ayer, marcó como 37 y algo, nada de escalofríos ni cosas raras, tranquila."
       3. [movilidad] "Este... no, nada, siga con la otra pregunta."
       4. [herida] "Se ve un poquito rojita ahí en el borde, pero nada de esas cosas de pus ni nada raro, yo creo que es normal de la cicatrización, doctora."
       5. [apetito] "..."
       6. [sueno] "Pues no muy bien que digamos, me despierto varias veces, pero uno ya sabe que después de una operación así es normal, no es nada grave. ... Pues no sé, más o menos."
-
-  - **caso_tray_pac_42_00017_14** / capa2_ruidosa — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
-      1. [dolor] "¿Cómo dice? Ay, disculpe... el dolor... uy no le sé decir bien, como un cinco creo, por la barriga, donde me operaron. Es que se me olvida si fue ayer o hace tres días la operación, perdone."
-      2. [?] "Sí, [inaudible] [inaudible] momentos así como de frío, sudando... me tomaron la temperatura y cre- que marcó como 38, algo así, no me acuerdo bien la hora [inaudible] el día, discúlpeme."
-      3. [movilidad] "Pues me muevo poquito, con ayuda, despacito... es que me canso rápido, no sé si es normal a estos días o no, ya perdí la cuenta de cuántos llevo. Espere, en realidad no, creo que sí me duele bastante."
-      4. [herida] "Ay sí, doctor... eh, mi hija me dijo que vio como un líquido, amarillo creo, saliendo ahí de la herida, no sé bien si eso es normal, me preocupa un poco."
-      5. [apetito] "Ay no, casi no me provoca comer nada, todo me da como asco, mi señora se preocupa porque como poquito."
-      6. [dolor] "[silencio]"
 
   - **caso_tray_pac_42_00019_1** / capa2_ruidosa — real: **amarillo**, predicho: **verde** — con interrupción de tercero
     Hallazgos: (ninguno)
@@ -1751,8 +1454,8 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay, la comida... no sé, no me provoca mucho, todo me sabe raro. Pero bueno, ¿usted no me iba a preguntar sobre el sueño también?"
       6. [sueno] "Ay, hija, esas noches larguísimas, uno da vueltas y vueltas... pero no quiero quitarle más tiempo, ¿ya casi terminamos?"
 
-  - **caso_tray_pac_42_00019_7** / capa2_ruidosa — real: **rojo**, predicho: **verde** — con interrupción de tercero
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00019_7** / capa2_ruidosa — real: **rojo**, predicho: **amarillo** — con interrupción de tercero
+    Hallazgos: AMBER-MOBILITY ("no puedo levantarme")
       1. [dolor] "Buenas, mijo. El dolor lo siento en el pecho, donde la cirugía, y hoy lo sentiría como un 5, más incómodo que otros días. Espere, en realidad no, creo que sí me duele bastante."
       2. [dolor] "[inaudible] señor, me he sentido como afiebr- me tomé la temperatura y marcó [inaudible] [inaudible] he sentido un poco de escalofrío."
       3. [movilidad] "Ay, muy mal, la verdad. Antes me movía sola sin problema y ahora casi no puedo levantarme, necesito que alguien me ayude para todo. ... Ahí vamos, no le podría decir con seguridad."
@@ -1760,14 +1463,14 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay no, casi no me provoca comer nada, se me ha ido mucho el apetito estos días, como poquito y a las fuerzas."
       6. [sueno] "No, mijo, he dormido muy mal, me despierto varias veces por el dolor y el malestar, casi no descanso."
 
-  - **caso_tray_pac_42_00020_14** / capa2_ruidosa — real: **verde**, predicho: **rojo**
-    Hallazgos: RED-NEURO ("confunden")
-      1. [dolor] "Ay, disculpe, ¿me repite? Es que... creo que ha sido leve, poquito no más, como un 2, pero espere, ¿estamos hablando de hoy o de ayer? Ya ni me acuerdo bien qué día es."
-      2. [fiebre] "No, no, fiebre no he sentido... creo que me tomé la temperatura ayer, o antier, no sé bien, pero me acuerdo que decía como 36 y algo, normalita. Espere, en realidad no, creo que sí me duele bastante."
-      3. [movilidad] "Eso sí me acuerdo mejor, me he movido bien, normal, sin problema para caminar ni nada... aunque espere, ¿usted me preguntó por hoy o por cuando salí de la cirugía? Es que se me mezclan los días."
-      4. [herida] "No, doctor... digo, no señor, la he visto normal, sin nada raro, ni rojo ni con esas cosas que dice. Ay perdón, ¿usted me preguntó de la herida de ahora o de cuando me la revisaron en el hospital?"
-      5. [apetito] "No, como bien, tengo ganas de comer normal... espere, ¿ya es hora del almuerzo? Perdón, se me fue la cabeza un momento, ¿qué me preguntaba?"
-      6. [?] "He dormido bien, normal, sin despertarme por dolor ni nada... aunque, uy, ¿usted me llamó ayer también o es la primera vez? Perdóneme, es que se me confunden las llamadas."
+  - **caso_tray_pac_42_00019_14** / capa2_ruidosa — real: **rojo**, predicho: **verde** — con interrupción de tercero
+    Hallazgos: (ninguno)
+      1. [dolor] "Ay, ¿cómo así, mija? Espere... ¿la cirugía fue el jueves o fue la otra semana? Es que el dolor lo siento como un 6, ahí en el pecho, pero se me confunden los días."
+      2. [fiebre] "Ay sí, creo que sí... me sentí como con mucho calor anoche, toda sudada, y frío al mismo tiempo, qué raro. No sé si me la tomé o fue mi hija, pero me acuerdo un número como... ¿39 algo? No estoy segura, mija."
+      3. [movilidad] "Pues... uy, me cuesta un poco, mija, me siento como pesada, despacito me muevo, no sé si es normal o no a estos días... ¿usted sabe cuántos días llevo ya? Se me pierden las cuentas."
+      4. [herida] "Ay, la miré ayer o antier, no sé bien... la vi como rojita, un poquito, alrededor mija, pero no le vi que saliera nada raro ni mal olor, gracias a Dios."
+      5. [apetito] "Ay no, mija, casi no me provoca comer, todo me da como asco o pereza, apenas unas cucharaditas de sopa y ya. Mi hija se preocupa porque no como casi nada. No, olvide lo que dije, es al revés."
+      6. [sueno] "Ay no, casi no duermo, mija, me despierto sudada y con dolor, y no sé si es de noche o de día a veces, todo se me revuelve."
 
   - **caso_tray_pac_42_00021_3** / capa2_ruidosa — real: **verde**, predicho: **rojo** — con interrupción de tercero
     Hallazgos: RED-NEURO ("confusión")
@@ -1787,24 +1490,6 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues el apetito lo tengo un poco bajo, como que no me provoca comer igual que antes, pero de todas maneras algo como. No es que no coma nada, pero sí menos cantidad."
       6. [sueno] "Ay, el sueño sí lo tengo bastante alterado, me despierto varias veces en la noche por el dolor y me cuesta volver a dormirme, así que descanso poquito."
 
-  - **caso_tray_pac_42_00023_1** / capa2_ruidosa — real: **verde**, predicho: **rojo** — con interrupción de tercero
-    Hallazgos: RED-NEURO ("confundo")
-      1. [dolor] "¿Ayer? Ay, espere... ¿fue ay- la operación o [inaudible] Ya me confundo con los días... el dolor así como un poquito molesto, más o menos a la mitad, no sé [inaudible] decirle."
-      2. [fiebre] "Sí, me la tomé... o [inaudible] que fue mi [inaudible] la [inaudible] la tomó, no sé, marcó algo así como treinta [inaudible] si- y algo, [inaudible] muy alta pero ta- fría, ¿me entiende?"
-      3. [movilidad] "Pues... me cuesta un poco, toca que me ayuden a levantarme, así despacito, no puedo yo solita todavía... es normal eso, ¿no? Es que no me acuerdo si el médico me dijo cuánto tiempo iba a durar así."
-      4. [herida] "Ay, sí, la vi como rojita alrededor, un poquito no más, no sé si es normal o no... no le he visto que salga nada raro, solo eso rojito."
-      5. [?] "He comido bien, gracias a Dios, como siempre, no ha habido problema con eso... ay espere, ¿usted me preguntó del dolor ya? Es que se me olvida si ya contesté eso."
-      6. [dolor] "Pues no he dormido tan bien como antes, me despierto un poco en la noche, no sé si es por el dolor o porque ya estoy vieja y así duermo yo, jeje."
-
-  - **caso_tray_pac_42_00024_1** / capa2_ruidosa — real: **verde**, predicho: **rojo** — con interrupción de tercero
-    Hallazgos: RED-NEURO ("confundo")
-      1. [dolor] "¿Cirugía... ya me la hicieron? Ay perdone, es que me confundo con los días... ¿hoy es martes? Del dolor, pues casi no siento nada, como un uno, por ahí en el pecho, no sé si es hoy o ayer que me operaron."
-      2. [fiebre] "Ay sí, me la tomaron... creo que decía como 37 y algo, ¿eso es mucho? No he sentido escalofríos, pero es que se me olvida si fue hoy o ayer que me la midieron."
-      3. [movilidad] "Pues me muevo despacito, como esperaba el doctor, no sé si eso está bien o mal... ¿usted me había dicho algo de eso antes? Es que ando como perdido con los días."
-      4. [herida] "Ahí la he visto un poquito rojita, como un enrojecimiento leve, pero no le he visto que salga nada raro ni mal olor... ¿eso es normal o me tengo que preocupar? Es que no recuerdo si ya le había contado esto."
-      5. [apetito] "He comido normal, como siempre, sin náuseas ni nada raro... aunque no sé si eso fue hoy o ayer, se me revuelven los días, disculpe. No, olvide lo que dije, es al revés."
-      6. [sueno] "He dormido como raro, medio alterado, no sé si es por los nervios o por la operación... me despierto y no sé ni qué hora es, todo se me mezcla."
-
   - **caso_tray_pac_42_00025_7** / capa2_ruidosa — real: **amarillo**, predicho: **verde**
     Hallazgos: (ninguno)
       1. [dolor] "¡Ay doctor, gracias a Dios por llamar! El dolor está como en un 3, ahí en la herida... pero ¿eso es normal? ¿o debería preocuparme? pues"
@@ -1823,17 +1508,8 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues la verdad he comido menos de lo normal, como que no me provoca mucho... ¿eso es malo doctor? Es que con tanta preocupación se me quita hasta el hambre. ... Digamos que sí, pero no tanto."
       6. [dolor] "Ay doctor, el sueño ha sido lo peor, casi no duermo, me despierto asustada pensando en el dolor y en si todo va bien... ¡dígame que esto es normal, por favor!"
 
-  - **caso_tray_pac_42_00026_7** / capa2_ruidosa — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
-      1. [dolor] "¿Cómo dijo? Ay perdón, es [inaudible] espere, ¿la cirugía fue el jueves o [inaudible] viernes? [inaudible] que el dolor sí está fu- como un 6, y no sé [inaudible] es normal a estos días."
-      2. [dolor] "Sí, señora, ayer o antier me sentí como afiebrada, tenía el cuerpo caliente... creo que como 38, no sé si eso es mucho. ¿Eso es grave o es normal a los días que voy?"
-      3. [movilidad] "Ah, eso sí, para caminar no me cuesta nada, camino normal... es más raro porque me duele pero me muevo bien, no sé por qué será eso."
-      4. [herida] "Ay sí, eso sí me tiene preocupada... la he visto como con un líquido, amarillo creo, saliendo de ahí. No sé si eso es normal o si me tengo que asustar, es que no me acuerdo si eso pasó desde el principio o apenas ayer. Bueno, eso dije, pero ayer le dije lo contrario."
-      5. [?] "No, casi no me da hambre, como poquito y a veces ni eso... no sé si es por los medicamentos o qué será, disculpe ¿me preguntó del sueño también o eso ya fue?"
-      6. [sueno] "Ay no, para nada, duermo muy mal, me despierto varias veces, no sé si es por el dolor o por los nervios... la verdad ya ni sé qué día es hoy de tanto que no descanso."
-
-  - **caso_tray_pac_42_00026_14** / capa2_ruidosa — real: **rojo**, predicho: **verde** — con interrupción de tercero
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00026_14** / capa2_ruidosa — real: **rojo**, predicho: **amarillo** — con interrupción de tercero
+    Hallazgos: AMBER-FEVER ("acalorada")
       1. [dolor] "Ay, pues... más o menos, ahí voy sobreviviendo. ¿Usted cómo ha estado, todo bien por allá? Espere, en realidad no, creo que sí me duele bastante."
       2. [fiebre] "Uy, no sé, no le he puesto mucho cuidado a eso... aunque sí me he sentido como acalorada a ratos. ¿Usted cree que eso es normal después de la cirugía?"
       3. [movilidad] "Ah, eso sí, camino normal, no hay problema con eso... oiga, ¿usted sabe si esta llamada dura mucho? Es que tengo algo pendiente ahorita."
@@ -1850,17 +1526,8 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "..."
       6. [sueno] "Uy, dormir no, casi nada... me despierto a cada rato, no sé si por el dolor o por los ruidos, todo revuelto ahí en la noche, doctor."
 
-  - **caso_tray_pac_42_00027_7** / capa2_ruidosa — real: **rojo**, predicho: **verde** — con interrupción de tercero
-    Hallazgos: (ninguno)
-      1. [?] "Ehh... ¿cómo así, del día de hoy o de cuando me operaron? Es que se me revuelven los días... creo que un 6, más o menos, ahorita me duele bastante."
-      2. [dolor] "Sí, sí... ayer o antier me sentí como con frío, temblando, y creo que me la tomé... ¿o eso fue hoy? Marcaba como 39 algo, no me acuerdo bien."
-      3. [fiebre] "Pues... me cuesta un poco, ando despacito, agarrado de algo. No sé si es normal a estos días o qué, pero no me siento con muchas fuerzas. ... Pues no sé, más o menos."
-      4. [movilidad] "Sí señorita, la he visto un poco roja alrededor, como enrojecidita... no sé si eso es normal o no, no me acuerdo si antes se veía así también."
-      5. [herida] "No, la verdad casi no me da hambre, como poquito y ya me siento lleno... y duermo mal también, me despierto mucho, no sé ni qué día es a veces."
-      6. [sueno] "Duermo muy mal, señorita, me despierto varias veces por el dolor y sudando... a veces no sé si es de noche o de día, todo se me revuelve."
-
-  - **caso_tray_pac_42_00027_14** / capa2_ruidosa — real: **rojo**, predicho: **verde** — con interrupción de tercero
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00027_14** / capa2_ruidosa — real: **rojo**, predicho: **amarillo** — con interrupción de tercero
+    Hallazgos: AMBER-FEVER ("38")
       1. [dolor] "Ay, no, más o menos no más, un dolorcito ahí normal de la operación, nada del otro mundo. Si acaso un 6, pero eso ya se me pasa solo, no se preocupe."
       2. [dolor] "Pues sí me he sentido como con un poco de calorcito, pero nada de escalofríos ni nada raro. Me tomé la temperatura y salió como en 38, pero eso debe ser del calor de acá no más, doctor. ... Ahí vamos, no le podría decir con seguridad."
       3. [movilidad] "Ay, pues ahí vamos despacito, un poco más difícil de lo normal [inaudible] levantarme, pero eso es normal después de [inaudible] operación, no es nada [inaudible] Ya me [inaudible] poco a [inaudible] no se preocupe."
@@ -1877,8 +1544,8 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay pues casi no me provoca comer, pero eso es normal con tanto medicamento, no me preocupo por eso, algo como paso."
       6. [sueno] "Pues me despierto un poquito por la molestia, pero duermo mis horitas, no es nada de qué alarmarse, tranquila."
 
-  - **caso_tray_pac_42_00028_3** / capa2_ruidosa — real: **verde**, predicho: **rojo** — con interrupción de tercero
-    Hallazgos: RED-NEURO ("confunde"), AMBER-FEVER ("fiebre")
+  - **caso_tray_pac_42_00028_3** / capa2_ruidosa — real: **verde**, predicho: **amarillo** — con interrupción de tercero
+    Hallazgos: AMBER-FEVER ("fiebre")
       1. [dolor] "Ay, ¿cómo así, perdone? ¿Me pregunta de hoy o de cuando me operaron... eso fue el lunes o el martes? Ahorita siento como un tres, por ahí en la cadera... o la rodilla, ya se me confunde cuál fue."
       2. [fiebre] "[inaudible] fiebre no sé... me tomaron la temperatura hace [inaudible] rato y creo que estaba normal, como en 37, pero no me acuerdo si fue hoy o ayer. Escalofríos no he sentido, eso [inaudible] se [inaudible] puedo asegurar."
       3. [movilidad] "Sí, más o menos bien, doctor... digo, señorita. Me levanto de la cama sin mucho problema, camino con el andador o lo que me dieron ahí, no me acuerdo cómo se llama, pero sí me muevo normal."
@@ -1886,23 +1553,14 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay, es que no tengo casi ganas de comer, señorita... me traen la bandeja y como poquito, no sé si es por los medicamentos o qué. Náuseas no, pero la comida no me provoca casi nada."
       6. [dolor] "Duermo por ratos, señorita, me despierto y no sé si es por el dolor o porque ya me acostumbré a otro horario en el hospital... pero no es que sea muy grave, así como que me despierto y ya."
 
-  - **caso_tray_pac_42_00028_7** / capa2_ruidosa — real: **rojo**, predicho: **verde**
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00028_7** / capa2_ruidosa — real: **rojo**, predicho: **amarillo**
+    Hallazgos: AMBER-WOUND ("líquido ahí, como amarillito")
       1. [?] "Ay, pues no ha sido tan grave, algo de dolor ahí en la cadera, será un 5 más o menos, pero uno aguanta, no se preocupe. parcero"
       2. [fiebre] "Pues [inaudible] me [inaudible] sen- un poco calientica, la tomé y marcaba como [inaudible] y algo, pero yo creo que [inaudible] [inaudible] calor de [inaudible] casa, no le he puesto mucho cuidado."
       3. [?] "Ay no, en eso sí estoy bien, camino normal, sin problema, ahí me muevo tranquila por la casa."
       4. [herida] "Pues sí le sale un poquito de líquido ahí, como amarillito, pero no es mucho, yo creo que es normal de la sanada, no me preocupa mucho."
       5. [apetito] "Este... no, nada, siga con la otra pregunta."
       6. [?] "Pues duermo poquito, me despierto varias veces en la noche, pero eso es normal a esta edad, no es nada grave, ya cogeré el sueño."
-
-  - **caso_tray_pac_42_00028_14** / capa2_ruidosa — real: **rojo**, predicho: **amarillo** — con interrupción de tercero
-    Hallazgos: AMBER-FEVER ("calentura")
-      1. [dolor] "¡Ay, doctor, qué bueno que llama! Mire, el dolor está como en un 5, pero es que hoy amanecí con calentura también, ¿eso es normal? Estoy muy asustada, no sé qué hacer. ... No me acuerdo bien, la verdad."
-      2. [fiebre] "Sí señor, me tomé la temperatura y marcó 38.1°C, y sí he sentido como escalofríos también. ¿Eso es grave, doctor? Es que también la herida se ve un poquito rojita y me tiene con los nervios de punta."
-      3. [movilidad] "Ay, doctor, eso es lo peor, casi no puedo ni levantarme sola, siento la pierna como que no responde, muy incapacitada me siento. Me da miedo caerme, ¿usted cree que eso es normal o me está pasando algo malo? ome"
-      4. [herida] "Sí doctor, la [inaudible] con un enrojecimiento leve alrededor, no sale nada de líquido gracias a Dios- pero [inaudible] me preocupa [inaudible] ¿será que [inaudible] [inaudible] está infectando? Dígame [inaudible] verd- por [inaudible]"
-      5. [apetito] "Ay, casi no me provoca comer nada, doctor, se me ha ido el apetito por completo, como poquito y a las fuerzas. Con tanta preocupación ni hambre me da."
-      6. [sueno] "No, doctor, para nada, duermo muy mal, me despierto varias veces por el dolor y por los nervios, casi no descanso nada. Dígame, ¿todo esto es normal o debo preocuparme más?"
 
   - **caso_tray_pac_42_00029_7** / capa2_ruidosa — real: **amarillo**, predicho: **verde**
     Hallazgos: (ninguno)
@@ -1913,17 +1571,8 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Pues la verdad el apetito lo tengo bastante disminuido, casi no me provoca comer, como poquito y a veces me toca obligarme."
       6. [sueno] "El sueño lo he tenido muy alterado, me despierto varias veces en la noche y me cuesta volver a conciliar el sueño."
 
-  - **caso_tray_pac_42_00030_3** / capa2_ruidosa — real: **amarillo**, predicho: **verde** — con interrupción de tercero
-    Hallazgos: (ninguno)
-      1. [dolor] "Buenas, el dolor lo siento en la zona donde me operaron, como un ardorcito. Ahorita está como en un 4, no es insoportable pero sí molesta bastante."
-      2. [fiebre] "Sí, me he sentido un poco caliente, como afiebrada, me tomé la temperatura y marcó 37.8. No he tenido escalofríos ni sudoración, solo esa sensación de calorcito."
-      3. [movilidad] "Ay no, en eso sí estoy bien, me puedo levantar y caminar normal, no siento que me limite para moverme."
-      4. [?] "La herida la veo normal, no tiene enrojecimiento raro ni hinchazón, tampoco le sale nada ni huele mal. Se ve como debe ser, limpiecita."
-      5. [apetito] "Pues la verdad el apetito lo tengo muy bajo, casi no me provoca comer nada, como poquito y a la fuerza no más."
-      6. [dolor] "La verdad he dormido muy mal, me despierto varias veces en la noche por el dolor y por esa sensación de calor, casi no descanso bien."
-
-  - **caso_tray_pac_42_00030_7** / capa2_ruidosa — real: **rojo**, predicho: **verde** — con interrupción de tercero
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00030_7** / capa2_ruidosa — real: **rojo**, predicho: **amarillo** — con interrupción de tercero
+    Hallazgos: AMBER-FEVER ("acalorada")
       1. [dolor] "Ay pues... más o menos, ahí normal, como uno se siente después de esas cosas. ¿Usted qué comió hoy? No, olvide lo que dije, es al revés."
       2. [dolor] "Uy, no sé, no le he puesto mucha atención a eso... he estado como acalorada un poco pero no sé si eso cuenta. ¿Usted cree que eso es normal por el clima de aquí?"
       3. [movilidad] "[inaudible] sí, ahí camino normal, [inaudible] problema... oiga, ¿y usted hace mucho este trabajo de las llamadas?"
@@ -1931,23 +1580,14 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       5. [apetito] "Ay, no sé, como que no me provoca mucho comer últimamente... pero bueno, uno con el estrés a veces no come bien, ¿no? ¿Usted cree que eso influye?"
       6. [sueno] "Pues... no muy bien la verdad, me despierto varias veces, pero no sé, será que estoy nerviosa no más. ¿Ya casi terminamos? Es que me da como pereza hablar de esto."
 
-  - **caso_tray_pac_42_00030_14** / capa2_ruidosa — real: **rojo**, predicho: **verde** — con interrupción de tercero
-    Hallazgos: (ninguno)
+  - **caso_tray_pac_42_00030_14** / capa2_ruidosa — real: **rojo**, predicho: **amarillo** — con interrupción de tercero
+    Hallazgos: AMBER-FEVER ("38")
       1. [dolor] "Ay, pues normal, un poquito de molestia nomás, nada que no se aguante... como un 6 tal vez, pero no es tan grave, ahí voy."
       2. [fiebre] "Pues sí, me he sentido como tibia, calientica, pero no creo que sea nada, capaz es el clima... me tomé la temperatura y marcó como 38, pero eso no es mucho, ¿cierto?"
       3. [movilidad] "Pues... ha sido un poquito más difícil de lo normal, como que no me quiero ni levantar de la cama, pero eso es porque estoy vaga nomás, no es que no pueda."
       4. [herida] "Se ve un poquito rojita alrededor, pero nada de otro mundo, no le sale nada raro ni nada, seguro es normal por la cicatrización."
       5. [apetito] "Pues como poquito, casi no me provoca nada, pero eso también es normal después de una operación, ¿no? No es que esté enferma ni nada."
       6. [dolor] "Pues duermo poquito, me despierto varias veces, pero es que uno no está acostumbrado a la cama del hospital... no es nada grave, ya se me pasará."
-
-  - **caso_tray_pac_42_00032_14** / capa2_ruidosa — real: **verde**, predicho: **amarillo** — con interrupción de tercero
-    Hallazgos: AMBER-FEVER ("fiebre")
-      1. [dolor] "Ay, no sé, se me olvidó lo que iba a decir."
-      2. [fiebre] "No señor, para nada, me he sentido bien fresco. Me tomé la temperatura y estaba normalita, como en 36 y algo, nada de fiebre ni escalofríos. Bueno, eso dije, pero ayer le dije lo contrario."
-      3. [movilidad] "Sí señor, camino bien, sin problema. Hasta he dado mis vueltecitas por la casa sin necesidad de ayuda."
-      4. [herida] "No, doctor, la herida se ve bien tranquila, como debe ser. Nada raro, ni rojez ni esas cosas, todo normal por ahí. ome"
-      5. [apetito] "Como bien, doctor, con ganas normales, no me ha faltado el apetito para nada."
-      6. [sueno] "Duermo bien, tranquilo, sin despertarme por nada raro. Todo bien por ese lado, doctor."
 
   - **caso_tray_pac_42_00033_3** / capa2_ruidosa — real: **verde**, predicho: **amarillo** — con interrupción de tercero
     Hallazgos: AMBER-FEVER ("fiebre")
@@ -1977,7 +1617,7 @@ para el prototipo, no algo que el baseline use), para diagnosticar.
       6. [sueno] "Sí señora, he dormido bien, normal... pero ¿usted cree que es bueno dormir tanto? Ay, disculpe que pregunte tanto, es que todo esto me tiene con los nervios de punta."
 
   - **caso_tray_pac_42_00035_3** / capa2_ruidosa — real: **verde**, predicho: **amarillo**
-    Hallazgos: AMBER-FEVER ("fiebre"), AMBER-WOUND ("pus")
+    Hallazgos: AMBER-FEVER ("fiebre")
       1. [dolor] "¡Ay, no sé, como un 3! Pero dígam- ¿eso es normal o me tengo que preocupar? Es que me da mucho miedo que algo esté mal, ¿sí?"
       2. [fiebre] "Sí señor, me tomé la temperatura y marcó 37.5°C... ¿eso ya es fiebre? ¡Ay, me preocupa mucho, dígame la verdad porfa!"
       3. [movilidad] "Pues la verdad me he podido mover normal, camino sin problema... pero igual ¿eso está bien? ¿No debería sentir más dolor al moverme? ¡Ay, dígame que todo está bien, por favor!"

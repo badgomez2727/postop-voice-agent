@@ -340,6 +340,76 @@ const RULES = [
       { regex: /incapacitad\w*/i },
       { regex: /(pierna|brazo|mano)[^.;]{0,20}no\s+responde/i, selfNegating: true }
     ]
+  },
+  {
+    // No hay ningun hallazgo de adherencia a medicacion en el dataset
+    // oficial (assess() solo ve sintomas por turno, sin distinguir tema).
+    // La pregunta guionada de medicacion sale de SCRIPT en src/llm.js
+    // (docs/DECISIONS.md): 0 apariciones en 3.991 turnos reales del
+    // dataset, asi que preguntar por ella sin evidencia en knowledge/
+    // choca con la regla 2 de CLAUDE.md. Esta regla existe para la
+    // mencion ESPONTANEA -- un paciente puede decir que no esta tomando
+    // lo indicado sin que se le pregunte, y eso siguio siendo un hallazgo
+    // valido aunque el guion ya no lo pida. Encontrado en pruebas
+    // manuales contra el servidor real, no en el dataset oficial (que no
+    // registra adherencia).
+    id: 'AMBER-NONADHERENCE',
+    level: 'amber',
+    domain: 'medicacion',
+    label: 'No adherencia a medicacion',
+    patterns: [
+      // "no he tomado los medicamentos" / "no estoy tomando la
+      // medicacion" -- exige ancla de medicacion en la misma clausula
+      // para no confundirse con hidratacion ("no estoy tomando
+      // liquidos", que ya cubre AMBER-VOMIT/via_oral) ni con cualquier
+      // otro "no he tomado/estoy tomando X" sin relacion.
+      {
+        regex: /no\s+(he\s+tomado|estoy\s+tomando)\b[^.;]{0,25}(medicament\w*|pastill\w*|medicaci[oó]n|antibi[oó]tic\w*|tratamiento)/i,
+        selfNegating: true
+      },
+      // mismo caso, ancla antes de la negacion: "los medicamentos, no
+      // los he tomado"
+      {
+        regex: /(medicament\w*|pastill\w*|medicaci[oó]n|antibi[oó]tic\w*|tratamiento)[^.;]{0,25}no\s+(los\s+|las\s+)?(he\s+tomado|estoy\s+tomando)/i,
+        selfNegating: true
+      },
+      // "se me olvido la pastilla / tomarme el medicamento"
+      { regex: /se\s+me\s+olvid\w+[^.;]{0,20}(pastillas?|medicamentos?|medicaci[oó]n|tomar\w*)/i },
+      // "no conseguí las pastillas" -- verbo + ancla de medicacion
+      // explicita en la misma clausula.
+      {
+        regex: /no\s+(los\s+|las\s+)?(compr[eé]\w*|consegu[ií]\w*)[^.;]{0,20}(pastillas?|medicamentos?|medicaci[oó]n|antibi[oó]tic\w*|tratamiento)/i,
+        selfNegating: true
+      },
+      // "no los compré" -- pronombre obligatorio (no opcional): sin el,
+      // "no compré" es demasiado generico y colisiona con cualquier cosa
+      // que el paciente no haya comprado ("no compré pan para el
+      // desayuno" disparaba esto en pruebas antes de este ajuste). El
+      // pronombre inmediatamente despues de "no" es lo que ancla la
+      // frase a algo ya mencionado, en vez de una compra cualquiera.
+      // Riesgo residual aceptado y documentado, no eliminado: "no las
+      // compré" sin más contexto puede referirse a otra cosa plural
+      // femenina distinta de las pastillas -- construccion específica,
+      // no una regla general de "no compré nada".
+      {
+        regex: /no\s+(los|las)\s+(compr[eé]\w*|consegu[ií]\w*)/i,
+        selfNegating: true
+      },
+      // "los boté" -- ancla obligatoria via validate: "botar" solo es
+      // senal de no-adherencia si el objeto botado son los medicamentos.
+      {
+        regex: /(los|las)\s+bot[eé]\b/i,
+        validate: match => /pastill\w*|medicament\w*|medicaci[oó]n/i.test(match.input)
+      },
+      // "no voy a tomar" -- rechazo declarado. Se queda en ambar, no
+      // rojo: acumulacion ya cubre el caso combinado con otro sintoma
+      // (docs/DECISIONS.md). Un rechazo aislado sin ningun otro hallazgo
+      // sigue siendo ambar -- ver DECISIONS.md para el porque.
+      {
+        regex: /no\s+voy\s+a\s+tom\w*[^.;]{0,20}(pastillas?|medicamentos?|medicaci[oó]n|antibi[oó]tic\w*|tratamiento)/i,
+        selfNegating: true
+      }
+    ]
   }
 ];
 

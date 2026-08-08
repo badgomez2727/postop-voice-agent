@@ -92,13 +92,45 @@ const HISTORIAL_MAX_INTERCAMBIOS = 3;
 // puede ser tan grande como los tres pasajes de antes juntos.
 const EVIDENCIA_MAX_CARACTERES = 400;
 
+// Orden y temas derivados de las 160 llamadas reales de
+// data/dataset_final.json (3.991 turnos), no inventados -- ver el análisis
+// en la conversación que llevó a este cambio. Secuencia dominante real:
+// dolor > fiebre > movilidad > herida > apetito > sueño (89 de 160 casos la
+// siguen exacta; el resto varía el orden o se salta un tema, nunca invierte
+// la tendencia). Dos excepciones deliberadas a la fidelidad al dataset:
+//
+//   - 'apertura' se mantiene como paso propio aunque no exista como turno
+//     independiente en las transcripciones (el saludo real siempre viene
+//     pegado a la primera pregunta de dolor). El dataset es texto; una
+//     llamada de voz real necesita que el paciente sepa quién llama antes
+//     de que le pregunten por el dolor. Fidelidad al dataset en la
+//     estructura clínica, adaptación al medio en la apertura.
+//   - 'cierre' queda inventado por necesidad: ninguna de las 160 llamadas
+//     tiene una frase de despedida distinguible en la transcripción -- el
+//     último turno registrado es simplemente la pregunta del último tema
+//     (casi siempre sueño). No hay frase real que parafrasear aquí.
+//
+// 'medicacion' sale del guion: 0 apariciones en los 3.991 turnos reales, y
+// preguntar por algo que el dataset nunca sustenta choca con la regla 2 de
+// CLAUDE.md (nada clínico sin evidencia). La DETECCIÓN de no-adherencia
+// sigue viva en src/triage.js (AMBER-NONADHERENCE) para cuando el paciente
+// lo menciona espontáneamente -- ver docs/DECISIONS.md.
+// 'via_oral' tampoco es un paso propio: en el dataset real, la pregunta de
+// náuseas/vómito nunca aparece sola, siempre va fusionada dentro de la
+// pregunta de apetito ("¿ha logrado comer con normalidad o ha sentido
+// náuseas?") -- el paso 'apetito' de abajo hace esa misma fusión.
+//
+// El texto de cada paso es una paráfrasis del fraseo real más frecuente
+// para ese tema, no una copia literal -- cada tema tiene entre 130 y 270
+// formulaciones distintas en el dataset, no una frase canónica que copiar.
 const SCRIPT = [
   { topic: 'apertura', text: 'Hola, buenas. Le llamo del seguimiento después de su procedimiento. ¿Cómo se ha sentido en estas horas?' },
-  { topic: 'dolor', text: 'Cuénteme del dolor. En una escala de 1 a 10, ¿en cuánto lo pondría ahora mismo?' },
-  { topic: 'herida', text: 'Y la herida, ¿cómo la ve? ¿Ha notado sangrado, hinchazón o mal olor?' },
-  { topic: 'fiebre', text: '¿Ha tenido fiebre o escalofríos desde que salió?' },
-  { topic: 'via_oral', text: '¿Ha podido tomar líquidos y comer algo sin devolverlo?' },
-  { topic: 'medicacion', text: '¿Está tomando los medicamentos como se los indicaron?' },
+  { topic: 'dolor', text: 'Cuénteme del dolor: ¿en qué parte lo siente y qué tan fuerte es, en una escala de 0 a 10?' },
+  { topic: 'fiebre', text: '¿Ha sentido fiebre o escalofríos, o se ha tomado la temperatura en estos días?' },
+  { topic: 'movilidad', text: '¿Ha tenido alguna dificultad para moverse o caminar desde la cirugía?' },
+  { topic: 'herida', text: 'Y la herida, ¿cómo la ha visto? ¿Hay enrojecimiento, hinchazón, secreción o mal olor?' },
+  { topic: 'apetito', text: '¿Cómo ha estado su apetito? ¿Ha podido comer con normalidad o ha sentido náuseas?' },
+  { topic: 'sueno', text: 'Y por último, ¿cómo ha dormido estas noches? ¿Ha logrado descansar bien o se ha sentido interrumpido?' },
   { topic: 'cierre', text: 'Le agradezco. Voy a dejar registrado todo esto para el equipo. ¿Hay algo más que quiera reportar antes de colgar?' }
 ];
 

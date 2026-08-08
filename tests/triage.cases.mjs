@@ -295,18 +295,99 @@ export const cases = [
   },
 
   // ---- No adherencia a la medicación ----------------------------------------
-  // Gap conocido: hoy no existe ninguna regla para no-adherencia, así que
-  // estos casos documentan el comportamiento ACTUAL (none) a propósito. No es
-  // el resultado clínicamente ideal; es la línea base para no regresionar
-  // por accidente y para decidir, con aprobación, si se agrega una regla.
+  // AMBER-NONADHERENCE existe desde aquí -- ámbar, dominio 'medicacion'.
+  // No viene del dataset oficial (0 apariciones en 3.991 turnos reales):
+  // salió de mencionar espontánea contra el servidor real. La pregunta
+  // guionada de medicación salió de SCRIPT (src/llm.js) por la misma razón
+  // que esta regla existe -- ver docs/DECISIONS.md.
   {
-    id: 'non-adherence-01',
+    id: 'amber-nonadherence-01-no-he-tomado',
+    category: 'amber/medicacion',
+    utterance: 'No he tomado los medicamentos.',
+    expect: { level: 'amber', findingIds: ['AMBER-NONADHERENCE'] }
+  },
+  {
+    id: 'amber-nonadherence-02-no-estoy-tomando',
+    category: 'amber/medicacion',
+    utterance: 'No estoy tomando la medicación.',
+    expect: { level: 'amber', findingIds: ['AMBER-NONADHERENCE'] }
+  },
+  {
+    id: 'amber-nonadherence-03-se-me-olvido',
+    category: 'amber/medicacion',
+    utterance: 'Se me olvidó la pastilla ayer.',
+    expect: { level: 'amber', findingIds: ['AMBER-NONADHERENCE'] }
+  },
+  {
+    id: 'amber-nonadherence-04-no-conseguí',
+    category: 'amber/medicacion',
+    utterance: 'No conseguí las pastillas.',
+    expect: { level: 'amber', findingIds: ['AMBER-NONADHERENCE'] }
+  },
+  {
+    id: 'amber-nonadherence-05-pronombre-suelto',
+    category: 'amber/medicacion',
+    // Pronombre obligatorio ("los"/"las" pegado a "no") es lo que ancla
+    // esta frase a algo ya mencionado en la llamada -- sin él, "no compré"
+    // es demasiado genérico (ver caso de ruido más abajo).
+    utterance: 'No los compré.',
+    expect: { level: 'amber', findingIds: ['AMBER-NONADHERENCE'] }
+  },
+  {
+    id: 'amber-nonadherence-06-los-bote',
+    category: 'amber/medicacion',
+    utterance: 'Las pastillas las boté a la basura ayer.',
+    expect: { level: 'amber', findingIds: ['AMBER-NONADHERENCE'] }
+  },
+  {
+    id: 'amber-nonadherence-07-rechazo-declarado',
+    category: 'amber/medicacion',
+    // Rechazo declarado -- se queda en ámbar, no rojo. Aislado es
+    // ambiguo (puede ser un solo medicamento con efecto secundario, no
+    // abandono del tratamiento); combinado con cualquier otro hallazgo
+    // ámbar, RED-ACCUMULATION ya escala esto a rojo. Ver docs/DECISIONS.md.
+    utterance: 'No voy a tomar los antibióticos.',
+    expect: { level: 'amber', findingIds: ['AMBER-NONADHERENCE'] }
+  },
+  {
+    id: 'amber-nonadherence-negacion-real-01',
+    category: 'amber/medicacion',
+    utterance: 'Sí, estoy tomando los medicamentos como me dijeron.',
+    expect: { level: 'none' }
+  },
+  {
+    id: 'amber-nonadherence-ruido-01-no-colisiona-vomito',
+    category: 'amber/medicacion',
+    // Debe seguir siendo AMBER-VOMIT (vía oral), no AMBER-NONADHERENCE --
+    // "no he podido tomar" es intolerancia oral, no rechazo de medicación.
+    utterance: 'No he podido tomar nada de líquido, todo lo devuelvo.',
+    expect: { level: 'amber', findingIds: ['AMBER-VOMIT'] }
+  },
+  {
+    id: 'amber-nonadherence-ruido-02-no-generaliza-comprar',
+    category: 'amber/medicacion',
+    // Encontrado en pruebas propias antes de aplicar la regla: un primer
+    // borrador dejaba el pronombre opcional y esta frase disparaba
+    // AMBER-NONADHERENCE por error. Caso de regresión.
+    utterance: 'No compré pan para el desayuno.',
+    expect: { level: 'none' }
+  },
+
+  // Gap conocido, todavía sin cerrar después de AMBER-NONADHERENCE: verbos
+  // de abandono ("dejé de tomar") y pretérito simple con pronombre antes
+  // del verbo ("no me la tomé") no están en ningún patrón -- la regla se
+  // acotó a las 7 formulaciones específicas pedidas al diseñarla, no a
+  // toda construcción posible de no-adherencia. Documentado a propósito
+  // para no regresionar por accidente; candidato a una futura ampliación
+  // con aprobación explícita (regla 5 de CLAUDE.md).
+  {
+    id: 'non-adherence-gap-01-dejo-de-tomar',
     category: 'no-adherencia',
     utterance: 'Dejé de tomarme las pastillas porque me caían mal del estómago.',
     expect: { level: 'none' }
   },
   {
-    id: 'non-adherence-02',
+    id: 'non-adherence-gap-02-preterito-pronombre',
     category: 'no-adherencia',
     utterance: 'Se me pasó la hora de la pastilla de esta mañana y no me la tomé.',
     expect: { level: 'none' }

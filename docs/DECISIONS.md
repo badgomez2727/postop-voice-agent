@@ -343,6 +343,95 @@ eso tiene poco margen estadístico). Considerar si el umbral N debería variar
 por combinación de dominios (fiebre+movilidad puede no pesar igual que
 dolor+vía_oral) en vez de ser un número único.
 
+## 7. Guion derivado de datos reales, y no-adherencia como hallazgo espontáneo
+
+**El problema.** El `SCRIPT` de `src/llm.js` (apertura, dolor, herida, fiebre,
+vía_oral, medicación, cierre) se había inventado a mano al construir el
+adaptador de modelo — nunca se contrastó contra el dataset oficial. Revisando
+7 llamadas reales se detectó que ni el orden ni el tema `medicación` tenían
+respaldo.
+
+**La medición.** `data/dataset_final.json` trae 3.991 turnos de 160 llamadas
+reales (`caso_id`, no `dialogo_id` — ese último es único por turno, no
+agrupa la llamada). Filtrando `hablante === 'agente'` y clasificando por
+tema:
+
+- **Orden dominante real: dolor → fiebre → movilidad → herida → apetito →
+  sueño**, exacto en 89 de 160 llamadas; el resto varía el orden o se salta
+  un tema, ninguna lo invierte.
+- **`medicación` no aparece nunca** como pregunta del agente — 0 de 3.991
+  turnos.
+- **`vía_oral` (náuseas/vómito) nunca es una pregunta propia** — siempre
+  aparece fusionada dentro de la pregunta de apetito ("¿ha logrado comer con
+  normalidad o ha sentido náuseas?").
+- **No hay un turno de cierre/despedida distinguible** en ninguna de las 160
+  llamadas — el último turno registrado es simplemente la pregunta del
+  último tema (casi siempre sueño).
+
+**La decisión — `SCRIPT` reordenado, con dos excepciones deliberadas a la
+fidelidad al dataset:**
+
+1. `apertura` se mantiene como paso propio aunque no exista como turno
+   independiente en las transcripciones (el saludo real siempre va pegado a
+   la primera pregunta de dolor). El dataset es texto; una llamada de voz
+   real necesita que el paciente sepa quién llama antes de que le pregunten
+   por el dolor. Fidelidad al dataset en la estructura clínica, adaptación
+   al medio en la apertura.
+2. `cierre` queda con un texto inventado por necesidad — no hay frase real
+   que parafrasear. Documentado en el comentario de `src/llm.js`, no
+   presentado como derivado del dataset.
+
+`medicación` sale del guion (0 respaldo) y `vía_oral` se fusiona dentro de
+`apetito` (así aparece siempre en los datos reales). El texto de cada paso es
+una paráfrasis del fraseo real más frecuente para ese tema, no una copia
+literal — cada tema tiene entre 130 y 270 formulaciones distintas en el
+dataset.
+
+**No-adherencia a medicación no desaparece — se mueve de "pregunta guionada"
+a "hallazgo espontáneo".** Quitar la pregunta de `SCRIPT` no significa dejar
+de detectar el riesgo: la no-adherencia postoperatoria es un factor de
+riesgo clínico real, y en pruebas manuales contra el servidor apareció sin
+que se le preguntara al paciente. `src/triage.js` gana `AMBER-NONADHERENCE`
+(ámbar, dominio `medicacion`) para esa mención espontánea — no depende de
+que el guion la pregunte.
+
+Diseño de la regla:
+- Casi todos los patrones exigen una ancla de medicación
+  (`medicamento|pastilla|medicación|antibiótico|tratamiento`) en la misma
+  cláusula, para no colisionar con `AMBER-VOMIT` (vía oral: "no he podido
+  tomar líquidos") ni con nada fuera de dominio. Verificado con pruebas
+  dirigidas — ver `tests/triage.cases.mjs`, categoría `amber/medicacion`.
+- Un primer borrador del patrón de "no los compré" dejaba el pronombre
+  opcional; "No compré pan para el desayuno" disparaba la regla en pruebas
+  propias antes de aplicarla. Corregido exigiendo el pronombre `los`/`las`
+  inmediatamente después de "no" cuando no hay ancla de medicación
+  explícita — caso de regresión guardado en la suite.
+- **"no voy a tomar" (rechazo declarado) se queda en ámbar, no rojo.**
+  Aislado es ambiguo — puede ser un solo medicamento con efecto secundario,
+  no abandono del tratamiento. El mecanismo de acumulación (decisión 6, N=2
+  dominios ámbar) ya escala esto a rojo si viene combinado con cualquier
+  otro hallazgo — ese es el lugar correcto para capturar la combinación
+  peligrosa, no un rojo duro sobre cualquier mención aislada.
+- Gap conocido, no cerrado: verbos de abandono ("dejé de tomar") y
+  pretérito simple con pronombre antes del verbo ("no me la tomé") no están
+  cubiertos — la regla se acotó a las formulaciones pedidas al diseñarla, no
+  a toda construcción posible. Documentado en `tests/triage.cases.mjs`,
+  categoría `no-adherencia`, como línea base para no regresionar por
+  accidente.
+
+**Medido contra los 320 casos×capa del dataset oficial (`tools/evaluar-triage.js`):
+0 diferencia en recall rojo (10/24, 41.7%) y 0 diferencia en exactitud
+(75.9%) antes/después de agregar la regla** — esperado, porque el dataset
+oficial no menciona adherencia a medicación en ningún turno. Sin regresión
+en ningún caso.
+
+**Nota aparte, encontrada al hacer esta medición.** La versión de
+`docs/evaluacion-triage.md` que estaba comprometida en el repositorio medía
+un `src/triage.js` anterior a `RED-PSYCH`, `AMBER-MOBILITY` y el
+escalamiento por acumulación (decisión 6) — reportaba recall rojo 2/24
+(8.3%) cuando el número real, con esas tres mejoras ya aplicadas, es 10/24
+(41.7%). Regenerado en este mismo cambio; es el número que va a la entrega.
+
 ## Pendientes antes de entregar
 
 - [x] **Riesgo a G4 mitigado, no eliminado.** Enrutamiento selectivo (la
