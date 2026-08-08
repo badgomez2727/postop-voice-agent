@@ -143,7 +143,8 @@ const RULES = [
     label: 'Dificultad respiratoria o dolor torácico',
     patterns: [
       { regex: /no\s+puedo\s+respirar/i, selfNegating: true },
-      { regex: /me\s+(falta|cuesta)\s+(el\s+)?air\w+/i },
+      { regex: /me\s+(falta|cuesta)\s+(mucho\s+|un\s+poco\s+|bastante\s+)?(el\s+)?(air\w+|respirar)/i },
+      { regex: /dificultad\s+(para\s+respirar|respiratoria)/i },
       { regex: /ahog\w+/i },
       { regex: /dolor\s+en\s+el\s+pecho/i },
       { regex: /apret\w+\s+(en\s+)?el\s+pecho/i }

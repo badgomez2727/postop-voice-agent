@@ -63,6 +63,18 @@ export const cases = [
     utterance: 'Tengo un dolor en el pecho que no había sentido antes.',
     expect: { level: 'red', findingIds: ['RED-BREATHING'] }
   },
+  {
+    id: 'red-breathing-04',
+    category: 'red/respiracion',
+    utterance: 'Me cuesta mucho respirar desde anoche.',
+    expect: { level: 'red', findingIds: ['RED-BREATHING'] }
+  },
+  {
+    id: 'red-breathing-05',
+    category: 'red/respiracion',
+    utterance: 'Tengo dificultad para respirar.',
+    expect: { level: 'red', findingIds: ['RED-BREATHING'] }
+  },
 
   // ---- RED: neurológico ----------------------------------------------------
   {
@@ -213,6 +225,12 @@ export const cases = [
     id: 'negation-simple-04',
     category: 'negacion/simple',
     utterance: 'No se me ha abierto la herida.',
+    expect: { level: 'none' }
+  },
+  {
+    id: 'negation-simple-05',
+    category: 'negacion/simple',
+    utterance: 'No me cuesta nada respirar y no tengo ninguna dificultad para respirar.',
     expect: { level: 'none' }
   },
   {

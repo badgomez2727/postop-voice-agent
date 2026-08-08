@@ -165,6 +165,22 @@ ese archivo en esta sesión. Lo dejo anotado aquí porque es más urgente que
 los dos fallos de inyección de arriba: es un falso negativo de triage real,
 no hipotético, encontrado con una frase que un paciente diría tal cual.
 
+### Corregido (2026-08-08, aprobado explícitamente)
+
+`RED-BREATHING` gana dos patrones nuevos: `me\s+(falta|cuesta)\s+...` ahora
+acepta "respirar" como objeto además de "aire" (con intensificadores
+opcionales -- "mucho", "un poco", "bastante" -- entre "cuesta" y "respirar",
+necesarios porque la primera versión del arreglo no los contemplaba y falló
+contra "me cuesta **mucho** respirar" en la propia prueba de regresión), y
+un patrón nuevo cubre "dificultad para respirar" / "dificultad respiratoria".
+
+Verificado: `npm test` (79/79 en triage, con 2 casos nuevos de esta frase +
+1 de negación) y manualmente contra el servidor real -- "me cuesta mucho
+respirar desde anoche" y "tengo dificultad para respirar" ahora escalan
+como `RED-BREATHING`; "no me cuesta nada respirar y no tengo ninguna
+dificultad para respirar" sigue dando `none`, sin tocar `NEGATION_CUE`
+(ya incluía "no").
+
 ## Hallazgo aparte: `knowledge/usos coloquiales.md`
 
 Durante esta prueba encontré un archivo sin commitear en `knowledge/` —
