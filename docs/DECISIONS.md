@@ -149,6 +149,25 @@ Medido contra el servidor real, `LLM_PROVIDER=ollama`:
 (`scripted` / `scripted-routed` / `llm` / `scripted-fallback`) — la prueba
 de que el enrutamiento está funcionando, no solo una afirmación.
 
+**Corrección posterior — `PATRON_PREGUNTA_PACIENTE` sobre-disparaba.** La
+versión inicial de `esPreguntaDelPaciente()` marcaba como pregunta cualquier
+frase que EMPEZARA con qué/cómo/cuándo/dónde/por qué/puedo/debo/será/es
+normal/está bien, con o sin "?". Contra el servidor real, "Puedo caminar
+despacio, sin ayuda" (una afirmación) invocó al modelo y gastó 70+ segundos
+en un turno que el guion resolvía solo. No fue aislado: contra las 1.920
+respuestas de paciente de `data/dataset_final.json`, 27 arrancan con "como"
+(verbo comer, "Como bien, doctor, sin problema") que la clase de caracteres
+de "cómo" hacía indistinguible de una pregunta — cero de esas 27 son
+preguntas reales. Corregido exigiendo señal explícita de interrogación
+(`¿` o `?`, en cualquier posición) y nada más — un heurístico de palabra
+inicial no distingue confiablemente pregunta de afirmación en español.
+800 de 1.920 turnos de paciente reales (41.7%) traen el signo, densidad
+suficiente para no dejar sin invocar la mayoría de las preguntas genuinas.
+Riesgo aceptado: una transcripción de voz que no puntúe una pregunta real
+no se enruta al modelo — costo de naturalidad conversacional, no de
+seguridad (`triage.js` evalúa cada turno igual, invoque o no al modelo).
+Cubierto en `tests/run-llm-routing-tests.mjs`.
+
 ### 6b. Contexto recortado en las invocaciones que sí ocurren
 
 - `k: 1` en vez de `k: 3` (`src/server.js`) — un pasaje del RAG, no tres.

@@ -350,8 +350,35 @@ function degradeToScripted(session, assessment, evidence, { modelInvocations, er
 // preguntas del guion clínico (SCRIPT arriba) son fijas y correctas, y
 // scriptedReply() ya las resuelve en milisegundos. El modelo se reserva
 // para lo que el guion no puede resolver por sí solo.
-const PATRON_PREGUNTA_PACIENTE =
-  /\?|^\s*(qu[eé]|c[oó]mo|cu[aá]ndo|d[oó]nde|por\s+qu[eé]|puedo|debo|ser[aá]|es\s+normal|est[aá]\s+bien)\b/i;
+//
+// La versión anterior también marcaba como pregunta cualquier frase que
+// EMPEZARA con qué/cómo/cuándo/dónde/por qué/puedo/debo/será/es normal/está
+// bien, con o sin signo de interrogación. Contra el servidor real, "Puedo
+// caminar despacio, sin ayuda" (una afirmación) disparó el modelo y gastó
+// 70+ segundos en un turno que el guion resolvía solo. No fue un caso
+// aislado: contra las 1.920 respuestas de paciente del dataset oficial, 27
+// arrancan con "como" (verbo comer, primera persona -- "Como bien, doctor,
+// sin problema") que la clase de caracteres `[oó]` de "cómo" hacía
+// indistinguible de la pregunta "¿cómo...?" sin acento. Cero de esas 27 son
+// preguntas.
+//
+// Ahora exige señal explícita de interrogación -- el signo, de apertura o
+// cierre, en cualquier posición -- y nada más. Un heurístico de palabra
+// inicial no distingue confiablemente pregunta de afirmación en español
+// (¿"cómo" vs "como"? ¿"será" declarativo ("será mejor así") vs "será"
+// interrogativo ("¿será grave?")?), así que se elimina en vez de intentar
+// acotarlo caso por caso. Contra el mismo dataset, 800 de 1.920 turnos de
+// paciente (41.7%) sí traen el signo -- suficiente densidad de señal para
+// no dejar sin invocar al modelo la mayoría de las preguntas reales.
+//
+// Riesgo aceptado: una transcripción de voz que no puntúe una pregunta real
+// (el reconocimiento de voz no emite "?") no se enruta al modelo -- el
+// paciente recibe la redirección genérica del guion en vez de una respuesta
+// puntual. No es un riesgo de seguridad (triage.js sigue evaluando cada
+// turno igual, invoque o no al modelo) -- es un costo de naturalidad
+// conversacional, y preferible al costo medido de invocar al modelo sobre
+// una afirmación cada vez que empieza con una de esas palabras.
+const PATRON_PREGUNTA_PACIENTE = /[¿?]/;
 
 /** El paciente parece estar preguntando algo, no solo respondiendo el guion. */
 function esPreguntaDelPaciente(utterance) {
