@@ -228,8 +228,16 @@ pagan ese precio en absoluto.
 - Verificar que la instalación y ejecución completa toma 15 minutos o menos en
   una máquina limpia, siguiendo solo este README (compuerta G2) — sin contar
   la instalación de Ollama ni la descarga del modelo, que son prerrequisito.
-- Endurecer el prompt del sistema contra inyección de instrucciones (el agente
-  nunca debe obedecer un intento de redefinir su rol o saltarse el triage).
+- Capturas del demo y video (entregables 03/04) — ver `INFORME.md`, §13-14.
+
+Resuelto en esta sesión (2026-08-08), ver `docs/inyeccion-prompt.md`:
+endurecimiento del prompt del sistema + filtro de contenido post-generación
+contra revelación de instrucciones, diagnóstico presuntivo y dosis
+alucinadas; y `RED-BREATHING` en `triage.js` ahora reconoce "me cuesta
+respirar" / "dificultad para respirar", no solo "me falta el aire".
+
+**Informe final:** `INFORME.md` — declaración del modelo usado y por qué,
+evidencia de proceso, métricas y limitaciones conocidas.
 
 ## Datos y alcance
 
