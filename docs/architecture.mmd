@@ -8,9 +8,11 @@ flowchart TD
     R -->|pasajes + sourceId + relevancia| S
     T -->|nivel: none / amber / red| S
 
-    S --> L["Adaptador de modelo<br/>src/llm.js"]
-    L -->|"contexto recuperado únicamente"| M["Modelo único obligatorio<br/>(se define el 7 de agosto)"]
-    M -->|"reply + usedSources"| L
+    S --> L["Adaptador de modelo<br/>src/llm.js<br/>enrutamiento selectivo (necesitaModelo)"]
+    L -->|"guion fijo o pregunta sin evidencia<br/>(mayoría de los turnos)"| G["Guion clínico + pequeña conversación<br/>no clínica (scripted / scripted-routed)"]
+    L -->|"pregunta del paciente con evidencia,<br/>o respuesta ambigua"| M["Llama 3.2 3B vía Ollama<br/>(local, CPU -- único modelo activo)"]
+    M -->|"contexto recuperado únicamente<br/>reply + usedSources"| L
+    G --> S
     L --> S
 
     S --> SE["Estado de la llamada<br/>src/session.js"]
