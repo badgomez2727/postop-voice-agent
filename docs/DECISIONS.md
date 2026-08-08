@@ -254,6 +254,18 @@ producía consistentemente. No se pudo verificar contra Groq en vivo (Llama
 3.1 70B está descontinuado — decisión 5), así que ese soporte se documenta
 como esperado por especificación, no confirmado en este repositorio.
 
+**Corrección (decisión 6e): "0/10" no generaliza a 0%.** Con N=20 real,
+1 intento sí volvió a fallar la validación de forma — el modelo devolvió
+JSON con `reply`, `askedAbout` y `usedSources`, pero sin `groundedInContext`
+en absoluto (no un tipo equivocado, el campo faltaba). `response_format:
+json_object` fuerza JSON sintácticamente válido; no fuerza que el modelo
+rellene todas las claves del contrato. `formaValida()` lo rechazó
+correctamente y degradó al guion — el mecanismo funcionó exactamente como
+se diseñó — pero **el 10/10 → 0/10 de arriba era sobre una muestra
+demasiado chica para ser una tasa de fallo, no una garantía de 0%.** Tasa
+observada con la muestra más grande: 1/20 (5%). Ver decisión 6e para el
+resto de la remedición.
+
 **Medición final — turno que invoca al modelo, contexto recortado (6b),
 `response_format` forzado, N=7:**
 
@@ -282,6 +294,51 @@ exclusivo de 1B.
 Si Groq o Gemini reaparecen o el reto actualiza la lista permitida antes
 del 10 de agosto, seguirían siendo preferibles por latencia — pero no es
 algo que se pueda dar por sentado a esta altura.
+
+### 6e. Remedición de latencia, N=20 — el número sube, no baja
+
+N=7 (decisión 6d) era "indicativo, no definitivo" por diseño propio. Se
+remidió con `tools/medir-latencia.js`: 10 llamadas completas simuladas de 8
+turnos cada una (6 respuestas que el guion resuelve solo + 2 preguntas
+reales fuera de guion por llamada, con "?", sobre temas que `knowledge/`
+cubre), contra el servidor real con `LLM_PROVIDER=ollama`. Corrida completa
+en `docs/latencia-llm-n20.md`.
+
+| | Valor |
+|---|---|
+| Arranque en frío (1ra invocación de la corrida, aparte) | 155.2 s |
+| Invocaciones exitosas tras el arranque en frío | 18 |
+| P50 | **60.8 s** |
+| P95 | **95.3 s** |
+| Mínimo / máximo | 40.8 s / 95.3 s |
+| Fallo de validación de forma (decisión 6d) | 1/20 intentos (5%), 155.6 s antes de degradar |
+
+**El número no bajó respecto a N=7 (P50 15.3s / P95 37.6s) — subió,
+sustancialmente.** No hay una causa única identificada: candidatas sin
+descartar son que N=7 se corrió con un solo prompt de prueba fijo (menos
+variación real de contenido/longitud) mientras N=20 usa 10 preguntas reales
+distintas, contención por corridas secuenciales sobre la misma instancia de
+Ollama, o que N=7 simplemente no era representativo. No se investigó más a
+fondo en este cambio — queda como pendiente.
+
+**Turnos por llamada que invocan el modelo: 25% en esta medición** (2 de 8
+turnos por llamada, por diseño del script — cada llamada simulada trae
+exactamente 2 preguntas reales a propósito, para juntar N≥20 en una corrida
+manejable). No es una tasa derivada del dataset oficial: `data/dataset_final.json`
+no trae suficientes preguntas espontáneas reales del paciente hacia el
+agente como para medir esto contra datos reales — es el límite superior de
+lo que esta prueba ejercitó, no una predicción de cuánto se invocaría el
+modelo en una llamada real.
+
+**Decisión de producto, no técnica, que queda pendiente para antes de la
+entrega:** P50 60.8s está muy por encima de los ~30s que se habían fijado
+como el límite de lo tolerable en una conversación de voz en vivo. El
+enrutamiento selectivo (6a) ya redujo cuántos turnos pagan este costo —
+no lo eliminó, y no puede eliminarlo mientras el camino `llm` siga
+existiendo. Opciones sin decidir aquí: aceptar la limitación y declararla
+en el informe final, medir Groq si reaparece en el nivel gratuito, o
+acotar aún más qué turnos llegan al modelo a costa de menos naturalidad.
+Ver README, sección "Pendiente para la entrega del reto".
 
 ## 6. Escalamiento por acumulación de hallazgos ámbar
 
@@ -453,12 +510,18 @@ escalamiento por acumulación (decisión 6) — reportaba recall rojo 2/24
 
 ## Pendientes antes de entregar
 
-- [x] **Riesgo a G4 mitigado, no eliminado.** Enrutamiento selectivo (la
-      mayoría de los turnos ya no invocan el modelo, 7-9ms) + contexto
-      recortado en los que sí lo invocan — ver decisión 6a/6b. Camino `llm`
-      medido: P50 15.3s / P95 37.6s (decisión 6d, N=7 — indicativo, no
-      definitivo). Sigue sin ser "tiempo real" en el camino `llm`; sí lo es
-      en el camino guionado/enrutado, que es la mayoría de los turnos.
+- [ ] **Riesgo a G4 NO mitigado a un nivel aceptable — decisión de producto
+      pendiente, no solo técnica.** Enrutamiento selectivo (la mayoría de
+      los turnos ya no invocan el modelo, 2-48ms) + contexto recortado en
+      los que sí lo invocan — ver decisión 6a/6b. Camino `llm` remedido con
+      N=20 (decisión 6e): **P50 60.8s / P95 95.3s** — el doble del N=7
+      original, y muy por encima del umbral de ~30s fijado como tolerable
+      para no romper la sensación de conversación en vivo. Sigue sin ser
+      "tiempo real" en el camino `llm`; sí lo es en el camino
+      guionado/enrutado, que en esta medición es ~75% de los turnos (25%
+      invoca el modelo, límite superior de la prueba, no del dataset real).
+      Ver README, "Pendiente para la entrega del reto", para las opciones
+      sin decidir todavía.
 - [x] Elegir entre Llama 3.2 1B/3B y Phi-3.5 Mini para la entrega (ver
       decisión 5): Llama 3.2 3B, por consistencia (desviación <1s vs. ~5s de
       rango en Phi-3.5 — la rúbrica pide P95). Confirmado de nuevo en
@@ -471,9 +534,10 @@ escalamiento por acumulación (decisión 6) — reportaba recall rojo 2/24
       con `tests/run-llm-shape-tests.mjs` cubriendo 8 formas de respuesta
       malformada.
 - [x] Métricas que el README debe reportar: latencia P50/P95 (por camino,
-      guionado vs. `llm` — ver README "Métricas" y decisión 6d), tokens y
-      costo por llamada. N=7 para el camino `llm` es indicativo, no
-      definitivo — ampliar la muestra sigue pendiente.
+      guionado vs. `llm` — ver README "Métricas" y decisión 6e), tokens y
+      costo por llamada. Muestra ampliada a N=20 (decisión 6e) — el número
+      subió respecto a N=7, no bajó; queda documentado tal cual, sin
+      suavizarlo.
 - [x] Sustituir el corpus de ejemplo por el dataset oficial del reto — ver
       `tools/ingestar-corpus.js`: 104 documentos ingeridos en `knowledge/` desde
       los 107 PDFs de `../reto-oficial/dataset/textos/` (1 sin texto

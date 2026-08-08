@@ -144,8 +144,28 @@ antes de llegar al servidor, ni síntesis, que ocurre después):
 
 | Motor del turno | Cuándo ocurre | Latencia |
 |---|---|---|
-| `scripted` / `scripted-routed` | Guion clínico fijo, caso rojo, o respuesta que no necesita al modelo (la mayoría de los turnos — ver decisión 6a) | **7-9 ms** |
-| `llm` | Respuesta ambigua o pregunta fuera de guion que el RAG puede fundamentar | **P50 15.3s / P95 37.6s** (N=7, `format: json_object` forzado — ver decisión 6d) |
+| `scripted` / `scripted-routed` | Guion clínico fijo, caso rojo, o respuesta que no necesita al modelo (la mayoría de los turnos — ver decisión 6a) | **2-48 ms** |
+| `llm` | Respuesta ambigua o pregunta fuera de guion que el RAG puede fundamentar | **P50 60.8s / P95 95.3s** (N=18, `format: json_object` forzado — ver decisión 6d) |
+
+**Esta cifra de `llm` reemplaza la medición anterior (N=7, P50 15.3s / P95
+37.6s) y queda muy por encima.** Remedida con N=20 invocaciones reales
+contra Ollama (`tools/medir-latencia.js`), simulando 10 llamadas completas
+de 8 turnos cada una. Metodología:
+
+- Se descarta del cálculo la primera invocación de la corrida completa
+  (**155.2s** — arranque en frío: Ollama carga el modelo 3B en memoria) y
+  se reporta aparte, no mezclada con el resto.
+- De las 19 invocaciones restantes, **18 completaron con `engine: 'llm'`**
+  (rango 40.8s-95.3s) y **1 falló la validación de forma** (decisión 6d)
+  después de generar durante **155.6s** — el modelo devolvió JSON sin el
+  campo `groundedInContext`, `formaValida()` lo rechazó correctamente y
+  degradó al guion (`engine: 'scripted-fallback'`). El sistema se comportó
+  como está diseñado — nada malformado llegó al paciente — pero el costo en
+  tiempo de un fallo (155.6s) es peor que el de cualquier éxito. 1 de 20
+  intentos (5%) en esta muestra.
+- P50/P95 arriba se calculan solo sobre las 18 invocaciones exitosas, sin
+  el arranque en frío. Con el fallo incluido como "peor caso latente", el
+  máximo real observado en la corrida es 155.6s, no 95.3s.
 
 No se reporta un P50/P95 único combinando ambos motores: eso exigiría saber
 qué proporción real de turnos de una llamada cae en cada uno, y eso depende
@@ -153,10 +173,24 @@ de cómo hablan los pacientes de verdad, no de algo medible hoy con datos
 sintéticos. Reportar un número combinado inventando esa proporción sería
 peor que reportar los dos por separado.
 
-**Consumo, por turno que sí invoca el modelo** (N=7, mismo lote de arriba):
-tokens de entrada 447 (fijo — mismo prompt de prueba en cada intento),
-tokens de salida 50-73, 1 invocación al modelo, 1 consulta al RAG (`k=1`
-desde decisión 6b).
+**Turnos por llamada que invocan el modelo (naturalidad conversacional).**
+En las 10 llamadas simuladas de esta medición, 2 de cada 8 turnos (**25%**)
+intentaron invocar al modelo — por diseño del script de medición, no porque
+así hable un paciente real: cada llamada simulada trae exactamente 2
+preguntas reales fuera de guion a propósito, para juntar N≥20 invocaciones
+en una corrida manejable. El dataset oficial (`data/dataset_final.json`)
+no tiene suficientes preguntas espontáneas del paciente hacia el agente
+como para derivar de ahí una tasa realista — el 25% de esta prueba es una
+cota práctica de la medición, no una predicción de producción.
+
+**Consumo, por turno que sí invoca el modelo** (N=7, medición anterior —
+no reproducida en la remedición de latencia de arriba, que no capturó
+tokens): tokens de entrada 447 (fijo — mismo prompt de prueba en cada
+intento), tokens de salida 50-73, 1 invocación al modelo, 1 consulta al RAG
+(`k=1` desde decisión 6b). Muestras sueltas de la remedición (N=20,
+preguntas reales variadas, no un solo prompt fijo) están en el mismo rango:
+508-548 tokens de entrada, 46-53 de salida — consistente con la cifra de
+arriba, no la reemplaza formalmente.
 
 **Costo estimado por llamada.** Local, sin costo de API mientras corre en
 esta máquina. Extrapolado a precio de nube de un modelo comparable (Llama
@@ -171,14 +205,23 @@ pagan ese precio en absoluto.
 
 ## Pendiente para la entrega del reto
 
-- Reemplazar el diálogo guionado por reconocimiento y síntesis de voz reales
-  (compuerta G4: la conversación debe funcionar con voz en tiempo real). La
-  latencia del camino guionado (7-9ms) es compatible con voz en tiempo real;
-  la del camino que invoca al modelo (P95 37.6s) no lo es todavía — el
-  enrutamiento selectivo (decisión 6a) reduce cuántos turnos la pagan, no la
-  elimina. Con solo N=7 muestras, este P50/P95 es indicativo, no definitivo.
-- Ampliar la muestra de latencia del camino `llm` (N=7 es el mínimo para
-  calcular algo, no un número en el que confiar para la entrega).
+- **Decisión de producto pendiente, no solo técnica: el camino `llm` mide
+  P50 60.8s / P95 95.3s (N=18) contra el servidor real — el doble del P95
+  anterior (N=7), y por encima del umbral de 30s que se había fijado como
+  aceptable para no romper la sensación de conversación en vivo.** El
+  camino guionado (2-48ms) sí es compatible con voz en tiempo real; el que
+  invoca al modelo no lo es con Llama 3.2 3B local, ni siquiera con el
+  enrutamiento selectivo (decisión 6a) reduciendo cuántos turnos lo pagan
+  (~25% en la medición, límite superior de la prueba, no del dataset real).
+  Un fallo de forma en la muestra (decisión 6d) tardó 155.6s en degradar al
+  guion — peor que cualquier éxito. Opciones a decidir antes de la entrega,
+  no a resolver en código sin más contexto: (a) aceptar que el camino `llm`
+  rompe "tiempo real" y comunicarlo explícitamente como limitación conocida
+  en el informe, (b) medir Groq (Llama 3.1 70B en nube) si vuelve a estar
+  disponible, con la advertencia ya documentada de que puede descalificar
+  si deja de estar en el nivel gratuito, o (c) acotar aún más qué turnos
+  llegan al modelo, aceptando que menos preguntas del paciente reciben
+  respuesta generativa.
 - Recuperación híbrida (embeddings + TF-IDF): con el corpus real ya cargado,
   hay evidencia medida (no solo intuida) de que TF-IDF puro no siempre trae
   el documento correcto — ver `docs/recuperacion-despues.md`.
