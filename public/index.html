@@ -114,6 +114,7 @@
   .line .who {
     font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em;
     text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px;
+    display: flex; align-items: center; gap: 7px;
   }
   .line .said {
     padding: 10px 13px; border-radius: 3px; font-size: 14.5px;
@@ -121,7 +122,17 @@
   .line.agent .said { background: var(--panel-2); border-left: 2px solid var(--signal); }
   .line.patient { margin-left: auto; }
   .line.patient .said { background: var(--paper); color: #16232a; }
-  .line.patient .who { text-align: right; }
+  .line.patient .who { text-align: right; justify-content: flex-end; }
+
+  /* engine: qué camino respondió este turno -- guion (barato, ms) vs
+     modelo real (caro, segundos). Ver docs/DECISIONS.md, decisión 6a/6e. */
+  .engine-badge {
+    font-size: 9.5px; padding: 1px 6px; border-radius: 2px;
+    border: 1px solid var(--line); color: var(--text-dim);
+    letter-spacing: 0.06em; white-space: nowrap;
+  }
+  .engine-badge[data-engine="llm"] { color: var(--signal); border-color: var(--signal); }
+  .engine-badge[data-engine="scripted-fallback"] { color: var(--amber); border-color: var(--amber); }
 
   /* ---- controls ---- */
 
@@ -294,13 +305,40 @@ function setStatus(level, text) {
   $('statusText').textContent = text;
 }
 
-function addLine(who, text) {
+function formatLatencia(ms) {
+  if (ms == null) return '';
+  return ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${ms} ms`;
+}
+
+function addLine(who, text, meta) {
   const transcript = $('transcript');
   transcript.querySelector('.empty')?.remove();
   const line = document.createElement('div');
   line.className = 'line ' + who;
-  line.innerHTML = `<div class="who">${who === 'agent' ? 'Agente' : 'Paciente'}</div><div class="said"></div>`;
-  line.querySelector('.said').textContent = text;
+
+  const whoDiv = document.createElement('div');
+  whoDiv.className = 'who';
+  whoDiv.appendChild(document.createTextNode(who === 'agent' ? 'Agente' : 'Paciente'));
+
+  // engine: qué camino respondió -- scripted/scripted-routed (guion, no
+  // toca el modelo) vs llm (invocación real) vs scripted-fallback (se
+  // intentó invocar y falló). Ver docs/DECISIONS.md, decisión 6a/6e --
+  // esta etiqueta es la forma de ver "las dos capas" en vivo, no solo en
+  // los logs.
+  if (who === 'agent' && meta?.engine) {
+    const badge = document.createElement('span');
+    badge.className = 'engine-badge';
+    badge.dataset.engine = meta.engine;
+    badge.textContent = meta.engine + (meta.latencyMs != null ? ` · ${formatLatencia(meta.latencyMs)}` : '');
+    whoDiv.appendChild(badge);
+  }
+
+  const saidDiv = document.createElement('div');
+  saidDiv.className = 'said';
+  saidDiv.textContent = text;
+
+  line.appendChild(whoDiv);
+  line.appendChild(saidDiv);
   transcript.appendChild(line);
   transcript.scrollTop = transcript.scrollHeight;
 }
@@ -373,7 +411,7 @@ async function startCall() {
     $('callId').textContent = callId.slice(0, 8);
     $('transcript').innerHTML = '';
     $('ledger').innerHTML = '';
-    addLine('agent', data.agent);
+    addLine('agent', data.agent, { engine: 'scripted' }); // el saludo de apertura siempre es guion fijo -- ver src/server.js
     speak(data.agent);
     setStatus('none', 'Llamada activa · sin signos de alarma');
     ['btnMic', 'btnEnd', 'btnSend', 'typed'].forEach(id => { $(id).disabled = false; });
@@ -393,7 +431,7 @@ async function sendUtterance(utterance) {
       body: JSON.stringify({ utterance })
     });
 
-    addLine('agent', data.agent);
+    addLine('agent', data.agent, { engine: data.engine, latencyMs: data.metrics?.latencyMs });
     speak(data.agent);
     addLedgerEntry({ claim: data.agent, evidence: data.evidence, grounded: data.grounded, triage: data.triage });
 
