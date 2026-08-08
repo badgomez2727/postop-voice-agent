@@ -134,7 +134,52 @@ const SCRIPT = [
   { topic: 'cierre', text: 'Le agradezco. Voy a dejar registrado todo esto para el equipo. ¿Hay algo más que quiera reportar antes de colgar?' }
 ];
 
-function scriptedReply(session, assessment, evidence) {
+// ---- Pequeña conversación no clínica --------------------------------------
+//
+// El paciente a veces dice cosas que no tienen nada que ver con su
+// recuperación -- pregunta quién le habla, le devuelve la cortesía de "¿y
+// usted cómo ha estado?", o pregunta qué día es. Ignorarlas y saltar directo
+// a la siguiente pregunta clínica se siente frío por teléfono, y una llamada
+// de seguimiento real no suena así.
+//
+// Ninguna de estas respuestas es una afirmación clínica -- la regla 2 de
+// CLAUDE.md (nada sin respaldo del RAG) no aplica aquí, porque no hay nada
+// clínico que respaldar. Son constantes conocidas de antemano (la identidad
+// del sistema, la fecha real del servidor), no algo que generar, así que se
+// resuelven en guion, sin tocar el modelo -- coherente con por qué el resto
+// del guion ya evita invocarlo cuando no hace falta (ver necesitaModelo()
+// más abajo).
+const PATRON_IDENTIDAD_AGENTE = /(c[oó]mo (se llama|te llamas)|cu[aá]l es (su|tu) nombre|qui[eé]n (es usted|eres)|con qui[eé]n (hablo|estoy hablando)|es (usted )?(un )?robot|eres (un )?robot|es (usted )?(una )?persona)/i;
+const PATRON_CORTESIA_RECIPROCA = /(y (usted|tu|t[uú]),? c[oó]mo (ha estado|est[aá]|le ha ido|te ha ido)|c[oó]mo (ha estado|est[aá]) (usted|tu)|c[oó]mo va (su|tu) d[ií]a)/i;
+const PATRON_FECHA_HOY = /(qu[eé] (d[ií]a|fecha) es( hoy)?|en qu[eé] fecha estamos|qu[eé] fecha (es|tenemos))/i;
+const PATRON_ANIO_ACTUAL = /(en qu[eé] a[nñ]o estamos|qu[eé] a[nñ]o es)/i;
+
+function fechaDeHoyEnEspanol() {
+  return new Intl.DateTimeFormat('es-CO', { dateStyle: 'full' }).format(new Date());
+}
+
+/**
+ * Detecta si el paciente dijo algo de pequeña conversación, no clínico.
+ * Devuelve el texto de la respuesta, o null si el turno no aplica -- en ese
+ * caso scriptedReply() sigue con el guion clínico como siempre.
+ */
+function respuestaConversacional(utterance) {
+  if (PATRON_IDENTIDAD_AGENTE.test(utterance)) {
+    return 'Soy un asistente virtual de seguimiento, no una persona -- lo llamo para revisar cómo sigue después de su procedimiento.';
+  }
+  if (PATRON_CORTESIA_RECIPROCA.test(utterance)) {
+    return 'Gracias por preguntar, todo en orden por aquí.';
+  }
+  if (PATRON_ANIO_ACTUAL.test(utterance)) {
+    return `Estamos en ${new Date().getFullYear()}.`;
+  }
+  if (PATRON_FECHA_HOY.test(utterance)) {
+    return `Hoy es ${fechaDeHoyEnEspanol()}.`;
+  }
+  return null;
+}
+
+function scriptedReply(session, assessment, evidence, utterance) {
   // RED-PSYCH necesita su propia respuesta, no la genérica de escalamiento.
   // "Lo que me está contando necesita que lo valore alguien del equipo ya
   // mismo" es la frase correcta para sangrado o dificultad respiratoria --
@@ -181,6 +226,23 @@ function scriptedReply(session, assessment, evidence) {
   if (assessment.flagForReview) {
     prefix = 'Entiendo, eso lo voy a dejar marcado para que enfermería lo revise. ';
   } else {
+    // Solo se intenta pequeña conversación cuando el turno no trae ningún
+    // hallazgo (ni rojo, ni ámbar): la cortesía nunca reemplaza el
+    // reconocimiento de algo clínico que el paciente reportó. Si el
+    // paciente combina las dos cosas en un mismo turno ("se me olvidó la
+    // pastilla, ¿usted cómo se llama?"), assessment.flagForReview ya es
+    // true por el hallazgo ámbar y este bloque no se ejecuta -- gana la
+    // rama de arriba.
+    const conversacional = respuestaConversacional(utterance);
+    if (conversacional) {
+      return {
+        reply: `${conversacional} ${step.text}`,
+        askedAbout: step.topic,
+        usedSources: evidence.map(e => e.sourceId),
+        groundedInContext: evidence.length > 0
+      };
+    }
+
     // Retrieving a related passage from the knowledge base does not mean
     // that passage confirms this patient's situation is fine -- it only
     // means something topically relevant was found. Asserting "eso está
@@ -330,10 +392,10 @@ function callOllama({ history, evidence, utterance }) {
  * el momento en que ocurre, no descubrirse leyendo el JSON del resumen al
  * final.
  */
-function degradeToScripted(session, assessment, evidence, { modelInvocations, error, warning }) {
+function degradeToScripted(session, assessment, evidence, utterance, { modelInvocations, error, warning }) {
   console.warn(`⚠️  ${warning}`);
   return {
-    ...scriptedReply(session, assessment, evidence),
+    ...scriptedReply(session, assessment, evidence, utterance),
     engine: 'scripted-fallback',
     error,
     modelInvocations,
@@ -423,7 +485,7 @@ export async function generateTurn({ session, utterance, assessment, evidence })
     // "no hay proveedor configurado" -- son dos historias distintas para
     // el informe de latencia y costo.
     return {
-      ...scriptedReply(session, assessment, evidence),
+      ...scriptedReply(session, assessment, evidence, utterance),
       engine: 'scripted-routed',
       modelInvocations: 0,
       tokensIn: null,
@@ -445,7 +507,7 @@ export async function generateTurn({ session, utterance, assessment, evidence })
       // Típicamente: Ollama no está corriendo (ECONNREFUSED) o el modelo no
       // se descargó (`ollama pull`). Cualquiera de las dos no puede tumbar
       // la llamada telefónica — degrada al guion, pero visiblemente.
-      return degradeToScripted(session, assessment, evidence, {
+      return degradeToScripted(session, assessment, evidence, utterance, {
         modelInvocations: 1,
         error: error.message,
         warning: `Ollama (${LLM_MODEL}) no respondió — degradando a diálogo guionado. Motivo: ${error.message}`
@@ -457,7 +519,7 @@ export async function generateTurn({ session, utterance, assessment, evidence })
     if (!process.env.GROQ_API_KEY) {
       // Provider configurado pero sin llave: no tiene sentido intentar la
       // llamada de red solo para verla fallar. Degradar de inmediato.
-      return degradeToScripted(session, assessment, evidence, {
+      return degradeToScripted(session, assessment, evidence, utterance, {
         modelInvocations: 0,
         error: 'GROQ_API_KEY no está configurada.',
         warning: 'LLM_PROVIDER=groq pero GROQ_API_KEY no está configurada — degradando a diálogo guionado.'
@@ -477,7 +539,7 @@ export async function generateTurn({ session, utterance, assessment, evidence })
       // Una llamada fallida al modelo no puede tumbar la llamada telefónica.
       // Degrada al guion y deja el error en el registro para que quede
       // auditable en la transcripción y en las métricas.
-      return degradeToScripted(session, assessment, evidence, {
+      return degradeToScripted(session, assessment, evidence, utterance, {
         modelInvocations: 1,
         error: error.message,
         warning: `Groq (${GROQ_MODEL}) no respondió — degradando a diálogo guionado. Motivo: ${error.message}`
@@ -489,7 +551,7 @@ export async function generateTurn({ session, utterance, assessment, evidence })
   // advertencia — este es el modo de desarrollo local esperado, no una
   // falla que haya que avisar.
   return {
-    ...scriptedReply(session, assessment, evidence),
+    ...scriptedReply(session, assessment, evidence, utterance),
     engine: 'scripted',
     modelInvocations: 0,
     tokensIn: null,
