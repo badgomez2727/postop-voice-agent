@@ -151,6 +151,29 @@ function truncarPasaje(texto) {
 }
 
 /**
+ * Verifica que la respuesta del modelo tenga la FORMA que el resto del
+ * pipeline necesita -- no solo que JSON.parse() no haya lanzado. Medido
+ * contra Llama 3.2 1B (docs/DECISIONS.md, decisión 6c): una cadena entre
+ * comillas ES JSON válido (`"Lo siento, no entendí."` parsea sin error),
+ * pero no es el objeto esperado. Sin esta validación, `result.reply` queda
+ * `undefined`, el paciente no recibe nada por hablar, y nada lo detecta --
+ * el catch de generateTurn() nunca se dispara porque el parseo "funcionó".
+ * Aplica a cualquier proveedor, no es específica de un modelo.
+ */
+function formaValida(parsed) {
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return false;
+  if (typeof parsed.reply !== 'string' || !parsed.reply.trim()) return false;
+  // groundedInContext gobierna si el turno se marca fundamentado en el
+  // registro de evidencia (CLAUDE.md, regla 2) -- no es un detalle
+  // cosmético. Boolean("no lo tengo") da `true` en JavaScript: un string
+  // pensado por el modelo como negación se leería como afirmación. Mejor
+  // degradar a guion que confiar en una coerción que puede invertir el
+  // sentido de la afirmación clínica más importante del contrato.
+  if (typeof parsed.groundedInContext !== 'boolean') return false;
+  return true;
+}
+
+/**
  * Llama a cualquier API compatible con el formato chat/completions de
  * OpenAI (Groq y Ollama lo son ambas). Lo único que cambia entre proveedores
  * es la URL, el modelo y los headers (Groq necesita Authorization; Ollama,
@@ -174,6 +197,17 @@ async function callChatCompletions({ url, model, headers = {}, history, evidence
       model,
       max_tokens: 600,
       temperature: 0.3,
+      // Sin esto, Llama 3.2 3B ignoraba la instrucción de JSON del system
+      // prompt en cuanto el CONTEXTO traía un pasaje real del RAG (no en
+      // pruebas con contexto vacío) -- medido: 10/10 turnos de prueba
+      // contra el servidor real cayendo a formaValida()/degradeToScripted()
+      // antes de este cambio (ver docs/DECISIONS.md, decisión 6d).
+      // response_format es el parámetro estándar compatible con OpenAI
+      // para forzar modo JSON -- verificado contra Ollama en vivo antes de
+      // aplicar. Groq documenta el mismo parámetro para modelos
+      // compatibles, pero no se pudo probar en vivo (Llama 3.1 70B vía
+      // Groq está descontinuado -- decisión 5).
+      response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         ...historialRecortado,
@@ -195,6 +229,10 @@ async function callChatCompletions({ url, model, headers = {}, history, evidence
   if (!text) throw new Error(`${providerLabel} respondió sin contenido.`);
 
   const parsed = JSON.parse(text);
+
+  if (!formaValida(parsed)) {
+    throw new Error(`${providerLabel} devolvió JSON con forma inválida: ${text.slice(0, 200)}`);
+  }
 
   return {
     ...parsed,

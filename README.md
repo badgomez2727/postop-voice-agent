@@ -132,16 +132,53 @@ El razonamiento completo, con alternativas descartadas y riesgos, está en
 | `DELETE` | `/api/knowledge/:filename` | Elimina un documento (reindexa) |
 | `POST` | `/api/retrieve` | Prueba la recuperación sin conversar |
 
+## Métricas
+
+Medidas contra el servidor real (`LLM_PROVIDER=ollama`, Llama 3.2 3B),
+no extrapoladas. Metodología y muestras completas en `docs/DECISIONS.md`,
+decisión 6.
+
+**Latencia — desde que el paciente termina de hablar hasta que el agente
+tiene la respuesta lista** (no incluye reconocimiento de voz, que ocurre
+antes de llegar al servidor, ni síntesis, que ocurre después):
+
+| Motor del turno | Cuándo ocurre | Latencia |
+|---|---|---|
+| `scripted` / `scripted-routed` | Guion clínico fijo, caso rojo, o respuesta que no necesita al modelo (la mayoría de los turnos — ver decisión 6a) | **7-9 ms** |
+| `llm` | Respuesta ambigua o pregunta fuera de guion que el RAG puede fundamentar | **P50 15.3s / P95 37.6s** (N=7, `format: json_object` forzado — ver decisión 6d) |
+
+No se reporta un P50/P95 único combinando ambos motores: eso exigiría saber
+qué proporción real de turnos de una llamada cae en cada uno, y eso depende
+de cómo hablan los pacientes de verdad, no de algo medible hoy con datos
+sintéticos. Reportar un número combinado inventando esa proporción sería
+peor que reportar los dos por separado.
+
+**Consumo, por turno que sí invoca el modelo** (N=7, mismo lote de arriba):
+tokens de entrada 447 (fijo — mismo prompt de prueba en cada intento),
+tokens de salida 50-73, 1 invocación al modelo, 1 consulta al RAG (`k=1`
+desde decisión 6b).
+
+**Costo estimado por llamada.** Local, sin costo de API mientras corre en
+esta máquina. Extrapolado a precio de nube de un modelo comparable (Llama
+3.2 3B no está publicado en las calculadoras de precio usuales; usando como
+referencia un modelo pequeño típico a ~$0.05-0.10 por millón de tokens de
+entrada/salida): una llamada de ~7 turnos, con 1-2 invocaciones reales al
+modelo (el resto guionado, ver 6a), ronda los **~1000-1500 tokens totales
+por llamada — bien por debajo de un centavo de dólar** al precio de
+referencia. La cifra que sí importa para la compuerta de costo no es el
+precio por token, es que el enrutamiento selectivo ya redujo cuántos turnos
+pagan ese precio en absoluto.
+
 ## Pendiente para la entrega del reto
 
 - Reemplazar el diálogo guionado por reconocimiento y síntesis de voz reales
-  (compuerta G4: la conversación debe funcionar con voz en tiempo real). **La
-  latencia de Llama 3.2 3B con contexto realista (prompt del sistema +
-  historial + pasajes del RAG) todavía no está medida de forma confiable —
-  ver `docs/DECISIONS.md`, decisión 5, antes de dar esto por resuelto.**
-- Métricas obligatorias en el README: latencia P50/P95, tokens de entrada/salida
-  por turno y por llamada, invocaciones al modelo por turno, consultas al RAG
-  por llamada, y costo estimado por llamada.
+  (compuerta G4: la conversación debe funcionar con voz en tiempo real). La
+  latencia del camino guionado (7-9ms) es compatible con voz en tiempo real;
+  la del camino que invoca al modelo (P95 37.6s) no lo es todavía — el
+  enrutamiento selectivo (decisión 6a) reduce cuántos turnos la pagan, no la
+  elimina. Con solo N=7 muestras, este P50/P95 es indicativo, no definitivo.
+- Ampliar la muestra de latencia del camino `llm` (N=7 es el mínimo para
+  calcular algo, no un número en el que confiar para la entrega).
 - Recuperación híbrida (embeddings + TF-IDF): con el corpus real ya cargado,
   hay evidencia medida (no solo intuida) de que TF-IDF puro no siempre trae
   el documento correcto — ver `docs/recuperacion-despues.md`.

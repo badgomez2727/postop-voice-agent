@@ -200,10 +200,66 @@ el hueco de validación de forma) y su propio riesgo (más alucinación
 observada, no solo teórica) — pendiente de decidir explícitamente, no
 adoptada por default.
 
-**Con dos semanas más.** Cerrar el hueco de validación de forma en
-`callChatCompletions()` (no solo `JSON.parse()`, validar las claves
-esperadas) antes de considerar 1B en serio. Medir la curva completa
-enrutamiento+recorte+1B contra un volumen de turnos mayor a 3 muestras.
+### 6d. Validación de forma cerrada, y un hallazgo que explica por qué hacía falta
+
+`callChatCompletions()` solo verificaba que `JSON.parse()` no lanzara —
+no que el resultado tuviera la forma que el resto del pipeline necesita.
+Una cadena entre comillas (`"Lo siento, no entendí."`) ES JSON válido;
+`result.reply` quedaba `undefined`, y como el `try/catch` de
+`generateTurn()` nunca se disparaba (el parseo "funcionó"), nada lo
+detectaba. `formaValida()` ahora exige `reply` como string no vacío y
+`groundedInContext` como booleano estricto — un tipo equivocado ahí no es
+cosmético: `Boolean("no lo tengo")` da `true` en JavaScript, así que un
+string pensado como negación se leería como la afirmación clínica más
+sensible del contrato. Si la forma no es válida, se lanza y cae en el mismo
+camino de degradación ya probado (`degradeToScripted()`, advertencia
+visible en consola). `tests/run-llm-shape-tests.mjs` (nuevo, parte de
+`npm test`) mockea `fetch` y prueba 8 formas de respuesta malformada —
+ninguna llega hasta `result.reply` sin ser texto no vacío.
+
+Al construir esos casos de prueba contra el servidor real (no solo
+mockeado) para verificar la latencia del camino que sí invoca al modelo
+(decisión 6c), Llama 3.2 3B falló la validación de forma en **10 de 10**
+intentos — no un caso aislado. El patrón: con contexto vacío el modelo
+respeta el JSON; en cuanto el CONTEXTO trae un pasaje real del RAG (aunque
+esté truncado a 400 caracteres), responde en lenguaje natural y ni
+intenta el formato. La causa no era la compresión del system prompt
+(probado por separado: el prompt comprimido con contexto vacío da JSON
+válido 3/3).
+
+**El arreglo:** `response_format: { type: 'json_object' }` en el cuerpo de
+la petición — el parámetro estándar compatible con OpenAI para forzar modo
+JSON, que tanto Ollama como (según su documentación) Groq soportan. Con
+esto: **10/10 → 0/10 fallas de forma** en el mismo escenario que las
+producía consistentemente. No se pudo verificar contra Groq en vivo (Llama
+3.1 70B está descontinuado — decisión 5), así que ese soporte se documenta
+como esperado por especificación, no confirmado en este repositorio.
+
+**Medición final — turno que invoca al modelo, contexto recortado (6b),
+`response_format` forzado, N=7:**
+
+| | Valor |
+|---|---|
+| Éxitos (`engine: 'llm'`) | 7/7 |
+| Mediana (P50) | 15.3 s |
+| P95 | 37.6 s |
+| Mínimo / máximo | 4.0 s / 37.6 s |
+| Tokens de entrada (fijo, mismo prompt de prueba) | 447 |
+| Tokens de salida | 50-73 |
+
+Este número va al README como la métrica de latencia obligatoria del
+camino `llm` — junto con la de 7-9ms del camino guionado/enrutado, no
+combinadas en un solo P50/P95 (ver README, sección "Métricas", para por
+qué).
+
+**Con dos semanas más.** N=7 alcanza para reportar algo, no para confiar en
+ello — ampliar la muestra antes de la entrega. Verificar `response_format`
+contra Groq en vivo si el modelo vuelve a estar disponible. Medir si 1B con
+`response_format` forzado cierra también la brecha de confiabilidad
+observada en la decisión 6c, ahora que el mecanismo que probablemente la
+causaba (no forzar modo JSON) tiene una explicación concreta y no es
+exclusivo de 1B.
+
 Si Groq o Gemini reaparecen o el reto actualiza la lista permitida antes
 del 10 de agosto, seguirían siendo preferibles por latencia — pero no es
 algo que se pueda dar por sentado a esta altura.
@@ -291,21 +347,25 @@ dolor+vía_oral) en vez de ser un número único.
 
 - [x] **Riesgo a G4 mitigado, no eliminado.** Enrutamiento selectivo (la
       mayoría de los turnos ya no invocan el modelo, 7-9ms) + contexto
-      recortado en los que sí lo invocan — ver decisión 6a/6b. Llama 3.2 1B
-      medido con carga real (decisión 6c): mucho más rápido pero con un
-      hueco de validación de forma en `callChatCompletions()` que hay que
-      cerrar antes de adoptarlo — no cambiado hoy. Pendiente: medir la
-      latencia real de un turno que SÍ invoca el modelo (pregunta fuera de
-      guion) con volumen suficiente para P50/P95, no 1-3 muestras.
+      recortado en los que sí lo invocan — ver decisión 6a/6b. Camino `llm`
+      medido: P50 15.3s / P95 37.6s (decisión 6d, N=7 — indicativo, no
+      definitivo). Sigue sin ser "tiempo real" en el camino `llm`; sí lo es
+      en el camino guionado/enrutado, que es la mayoría de los turnos.
 - [x] Elegir entre Llama 3.2 1B/3B y Phi-3.5 Mini para la entrega (ver
       decisión 5): Llama 3.2 3B, por consistencia (desviación <1s vs. ~5s de
-      rango en Phi-3.5 — la rúbrica pide P95).
+      rango en Phi-3.5 — la rúbrica pide P95). Confirmado de nuevo en
+      decisión 6c/6d: 1B es más rápido pero con más riesgo de alucinación y
+      de forma inválida — no se adoptó.
 - [x] Actualizar `src/llm.js`, `README.md` y `.env.example`: proveedor
       `ollama` implementado, con Groq como código funcional pero no activo.
-- [ ] Métricas que el README debe reportar: latencia P50/P95, tokens y costo por
-      llamada (la ficha técnica del 7 de agosto define el formato exacto). Los
-      números de esta decisión son mediciones puntuales, no P50/P95 sobre una
-      muestra — falta correr suficientes turnos para eso.
+- [x] Cerrar el hueco de validación de forma en `callChatCompletions()`
+      (decisión 6d) — `formaValida()` + `response_format: json_object`,
+      con `tests/run-llm-shape-tests.mjs` cubriendo 8 formas de respuesta
+      malformada.
+- [x] Métricas que el README debe reportar: latencia P50/P95 (por camino,
+      guionado vs. `llm` — ver README "Métricas" y decisión 6d), tokens y
+      costo por llamada. N=7 para el camino `llm` es indicativo, no
+      definitivo — ampliar la muestra sigue pendiente.
 - [x] Sustituir el corpus de ejemplo por el dataset oficial del reto — ver
       `tools/ingestar-corpus.js`: 104 documentos ingeridos en `knowledge/` desde
       los 107 PDFs de `../reto-oficial/dataset/textos/` (1 sin texto
