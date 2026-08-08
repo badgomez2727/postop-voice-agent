@@ -508,6 +508,31 @@ escalamiento por acumulación (decisión 6) — reportaba recall rojo 2/24
 (8.3%) cuando el número real, con esas tres mejoras ya aplicadas, es 10/24
 (41.7%). Regenerado en este mismo cambio; es el número que va a la entrega.
 
+## 8. Silencio del paciente durante la llamada
+
+**El problema.** Encontrado probando la consola en vivo (2026-08-08): si el
+reconocimiento de voz del navegador no detecta nada (`onerror: 'no-speech'`),
+`public/index.html` solo mostraba un toast técnico ("Micrófono: no-speech")
+que ni el paciente ni el jurado verían como parte de la conversación — el
+agente se quedaba esperando sin decir nada. `docs/rubrica-evaluacion.md`
+(criterio "Calidad de la conversación (voz)") pregunta explícitamente **qué
+hace la solución durante los silencios** — no es un detalle cosmético.
+
+**Decisión.** `handleSilence()` en `public/index.html`: al primer silencio,
+el agente dice en voz alta *"¿Sigue ahí? No alcancé a escucharlo, ¿me repite
+eso?"*; si se repite, ofrece el cuadro de texto como alternativa en vez de
+repetir la misma frase indefinidamente. Se resuelve enteramente en el
+cliente — no abre un turno con el servidor, porque no hay utterance del
+paciente que `triage.js` o el RAG puedan evaluar; es cortesía de
+conversación, no una afirmación clínica.
+
+**Con dos semanas más.** Reintentar automáticamente el reconocimiento tras
+hablar (hoy requiere que el paciente presione "Hablar" de nuevo) — no se
+implementó por no poder probarlo contra un navegador real en este entorno;
+la lógica de reinicio automático del `SpeechRecognition` tiene comportamiento
+inconsistente entre navegadores y preferí no arriesgar una regresión sin
+poder verificarla en vivo.
+
 ## Pendientes antes de entregar
 
 - [ ] **Riesgo a G4 NO mitigado a un nivel aceptable — decisión de producto

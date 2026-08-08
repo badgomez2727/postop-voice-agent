@@ -292,6 +292,7 @@ const $ = id => document.getElementById(id);
 let callId = null;
 let recognition = null;
 let listening = false;
+let silenceCount = 0;
 
 function toast(message) {
   const el = $('toast');
@@ -423,6 +424,7 @@ async function startCall() {
 
 async function sendUtterance(utterance) {
   if (!callId || !utterance.trim()) return;
+  silenceCount = 0; // el paciente sí respondió -- se rompe la racha de silencio
   addLine('patient', utterance);
 
   try {
@@ -443,6 +445,23 @@ async function sendUtterance(utterance) {
   }
 }
 
+/**
+ * El paciente no dijo nada detectable. Sube en dos pasos -- primero pide
+ * que repita, y si se repite el silencio, ofrece el cuadro de texto como
+ * alternativa -- en vez de repetir indefinidamente la misma frase como si
+ * no hubiera pasado nada. No abre un turno con el servidor: no hay
+ * utterance del paciente que triage.js o el RAG puedan evaluar.
+ */
+function handleSilence() {
+  if (!callId) return;
+  silenceCount += 1;
+  const text = silenceCount === 1
+    ? '¿Sigue ahí? No alcancé a escucharlo, ¿me repite eso?'
+    : 'Sigo sin escucharlo. Si prefiere, escriba en el cuadro de texto de abajo.';
+  addLine('agent', text, { engine: 'scripted' });
+  speak(text);
+}
+
 function setupMic() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
@@ -457,7 +476,18 @@ function setupMic() {
   recognition.continuous = false;
 
   recognition.onresult = event => sendUtterance(event.results[0][0].transcript);
-  recognition.onerror = event => toast('Micrófono: ' + event.error);
+  recognition.onerror = event => {
+    // 'no-speech': el navegador no detectó nada que transcribir. Antes esto
+    // solo mostraba un toast técnico que ni el paciente ni el jurado verían
+    // como parte de la llamada -- la rúbrica pregunta explícitamente qué
+    // hace la solución durante los silencios (docs/rubrica-evaluacion.md,
+    // criterio "Calidad de la conversación"). Ahora el agente lo dice en
+    // voz alta, en vez de quedarse esperando sin señal alguna. No pasa por
+    // el servidor: no hay nada del paciente que triage.js o el RAG puedan
+    // evaluar, es cortesía de conversación, no una afirmación clínica.
+    if (event.error === 'no-speech') { handleSilence(); return; }
+    toast('Micrófono: ' + event.error);
+  };
   recognition.onend = () => {
     listening = false;
     $('btnMic').classList.remove('listening');
