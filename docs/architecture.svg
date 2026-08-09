@@ -1,0 +1,223 @@
+<svg viewBox="0 0 1320 1230" xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-label="Diagrama de flujo: el paciente habla por el navegador, el servidor ejecuta triage y RAG sobre cada turno en paralelo, el adaptador de modelo enruta entre el guion clínico fijo (2 a 48 milisegundos) y Llama 3.2 3B vía Ollama (P50 60.8 segundos, P95 95.3 segundos) según si hay una pregunta real con evidencia del RAG, un nivel de triage rojo escala de inmediato a alerta sin pasar nunca por el modelo, y la respuesta vuelve al servidor, al estado de la llamada y a la consola.">
+<title>Arquitectura y flujo de decisión — agente de voz post-operatorio</title>
+<desc>
+Entregable 02, Tech Sphere Challenge 2026. El triage (src/triage.js) y el RAG
+(src/rag.js) corren en paralelo sobre cada turno. Un nivel rojo escala a
+alerta sin invocar nunca al modelo. Todo lo demás llega al adaptador de
+modelo (src/llm.js, necesitaModelo()), que enruta entre el guion clínico fijo
+(2-48 ms) y Llama 3.2 3B vía Ollama (P50 60.8s / P95 95.3s).
+</desc>
+
+<style>
+  text { font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  .mono { font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace; }
+  .node rect { fill: #1b262b; stroke: #24343b; stroke-width: 1.5; }
+  .node.escalation rect { stroke: #d95a4e; }
+  .node-title { font-size: 13.5px; font-weight: 600; fill: #dfe8ea; }
+  .node-sub { font-size: 10.5px; fill: #8fa3aa; }
+  .node.escalation .node-title { fill: #d95a4e; }
+  .tag-fast rect { fill: #4fb3a5; fill-opacity: 0.18; }
+  .tag-fast text { fill: #4fb3a5; font-size: 10px; font-weight: 600; }
+  .tag-slow rect { fill: #d9a03c; fill-opacity: 0.18; }
+  .tag-slow text { fill: #d9a03c; font-size: 10px; font-weight: 600; }
+  .edge { stroke: #8fa3aa; stroke-width: 1.4; fill: none; }
+  .edge-escalation { stroke: #d95a4e; stroke-width: 1.6; stroke-dasharray: 5 4; }
+  .edge-fallback { stroke: #8fa3aa; stroke-width: 1.2; stroke-dasharray: 3 4; opacity: 0.85; }
+  .edge-label { font-size: 10px; fill: #8fa3aa; }
+  .edge-label-bg { fill: #151f23; }
+  .edge-label.escalation { fill: #d95a4e; }
+</style>
+
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#8fa3aa"></path>
+  </marker>
+  <marker id="arrow-alert" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#d95a4e"></path>
+  </marker>
+</defs>
+
+<rect x="0" y="0" width="1320" height="1230" fill="#0d1417"></rect>
+
+<!-- ================= EDGES (drawn first, under nodes) ================= -->
+
+<!-- Paciente <-> Consola -->
+<line class="edge" x1="580" y1="94" x2="580" y2="170" marker-end="url(#arrow)"></line>
+<line class="edge" x1="640" y1="170" x2="640" y2="94" marker-end="url(#arrow)"></line>
+<rect class="edge-label-bg" x="490" y="118" width="86" height="14"></rect>
+<text class="edge-label mono" x="533" y="128" text-anchor="middle">STT (voz→texto)</text>
+<rect class="edge-label-bg" x="644" y="118" width="94" height="14"></rect>
+<text class="edge-label mono" x="691" y="128" text-anchor="middle">TTS (texto→voz)</text>
+
+<!-- Consola -> Servidor (dos rutas: turno de llamada, gestión de conocimiento) -->
+<line class="edge" x1="580" y1="234" x2="580" y2="310" marker-end="url(#arrow)"></line>
+<line class="edge" x1="640" y1="234" x2="640" y2="310" marker-end="url(#arrow)"></line>
+<rect class="edge-label-bg" x="440" y="266" width="132" height="14"></rect>
+<text class="edge-label mono" x="506" y="276" text-anchor="middle">POST /api/calls/:id/turns</text>
+<rect class="edge-label-bg" x="646" y="266" width="150" height="14"></rect>
+<text class="edge-label mono" x="721" y="276" text-anchor="middle">POST · DELETE /api/knowledge</text>
+
+<!-- Consola -> Ledger -->
+<line class="edge" x1="730" y1="190" x2="848" y2="190" marker-end="url(#arrow)"></line>
+<rect class="edge-label-bg" x="736" y="168" width="66" height="14"></rect>
+<text class="edge-label mono" x="769" y="178" text-anchor="middle">evidencia</text>
+
+<!-- Servidor -> Knowledge (guarda / elimina) -->
+<line class="edge" x1="730" y1="330" x2="848" y2="330" marker-end="url(#arrow)"></line>
+<rect class="edge-label-bg" x="738" y="316" width="104" height="14"></rect>
+<text class="edge-label mono" x="790" y="326" text-anchor="middle">guarda / elimina</text>
+
+<!-- Knowledge -> RAG (reindexa) -->
+<path class="edge" d="M 990,374 L 900,450" marker-end="url(#arrow)"></path>
+<rect class="edge-label-bg" x="900" y="398" width="94" height="14"></rect>
+<text class="edge-label mono" x="947" y="408" text-anchor="middle">rebuildIndex()</text>
+
+<!-- Servidor -> Triage / RAG -->
+<path class="edge" d="M 560,374 L 410,450" marker-end="url(#arrow)"></path>
+<rect class="edge-label-bg" x="392" y="404" width="76" height="14"></rect>
+<text class="edge-label mono" x="430" y="414" text-anchor="middle">assess()</text>
+<path class="edge" d="M 660,374 L 815,450" marker-end="url(#arrow)"></path>
+<rect class="edge-label-bg" x="730" y="404" width="128" height="14"></rect>
+<text class="edge-label mono" x="794" y="414" text-anchor="middle">retrieve(texto, k=1)</text>
+
+<!-- Triage -> Alerta (escalamiento, bypass total del modelo) -->
+<line class="edge edge-escalation" x1="290" y1="482" x2="252" y2="482" marker-end="url(#arrow-alert)"></line>
+<rect class="edge-label-bg" x="16" y="522" width="278" height="14"></rect>
+<text class="edge-label escalation mono" x="145" y="532" text-anchor="middle">nivel = red, o ≥ 2 dominios ámbar</text>
+
+<!-- Triage / RAG -> Adaptador de modelo -->
+<path class="edge" d="M 400,514 L 560,590" marker-end="url(#arrow)"></path>
+<rect class="edge-label-bg" x="392" y="544" width="90" height="14"></rect>
+<text class="edge-label mono" x="437" y="554" text-anchor="middle">assessment</text>
+<path class="edge" d="M 840,514 L 660,590" marker-end="url(#arrow)"></path>
+<rect class="edge-label-bg" x="722" y="544" width="90" height="14"></rect>
+<text class="edge-label mono" x="767" y="554" text-anchor="middle">evidence</text>
+
+<!-- Adaptador -> Guion / Ollama (el fork de necesitaModelo()) -->
+<path class="edge" d="M 560,654 L 410,730" marker-end="url(#arrow)"></path>
+<rect class="edge-label-bg" x="290" y="672" width="220" height="26"></rect>
+<text class="edge-label mono" x="400" y="682" text-anchor="middle">guion, sin evidencia real,</text>
+<text class="edge-label mono" x="400" y="694" text-anchor="middle">o nivel rojo</text>
+<path class="edge" d="M 660,654 L 830,730" marker-end="url(#arrow)"></path>
+<rect class="edge-label-bg" x="712" y="672" width="240" height="14"></rect>
+<text class="edge-label mono" x="832" y="682" text-anchor="middle">pregunta real, con evidencia del RAG</text>
+
+<!-- Ollama -> Guion (fallback de forma inválida) -->
+<line class="edge edge-fallback" x1="730" y1="770" x2="512" y2="770" marker-end="url(#arrow)"></line>
+<rect class="edge-label-bg" x="514" y="778" width="216" height="14"></rect>
+<text class="edge-label mono" x="622" y="788" text-anchor="middle">forma inválida → scripted-fallback</text>
+
+<!-- Guion / Ollama -> Turno resuelto -->
+<path class="edge" d="M 400,794 L 560,870" marker-end="url(#arrow)"></path>
+<path class="edge" d="M 840,794 L 660,870" marker-end="url(#arrow)"></path>
+
+<!-- Turno resuelto -> session.js -> resumen -->
+<path class="edge" d="M 560,934 L 500,1010" marker-end="url(#arrow)"></path>
+<rect class="edge-label-bg" x="440" y="964" width="90" height="14"></rect>
+<text class="edge-label mono" x="485" y="974" text-anchor="middle">recordTurn()</text>
+<line class="edge" x1="500" y1="1074" x2="500" y2="1120" marker-end="url(#arrow)"></line>
+<rect class="edge-label-bg" x="455" y="1088" width="90" height="14"></rect>
+<text class="edge-label mono" x="500" y="1098" text-anchor="middle">summarize()</text>
+
+<!-- Turno resuelto -> vuelta a la Consola (misma respuesta HTTP) -->
+<path class="edge" d="M 730,902 L 1230,902 L 1230,210 L 730,210" marker-end="url(#arrow)"></path>
+<rect class="edge-label-bg" x="1160" y="548" width="140" height="26"></rect>
+<text class="edge-label mono" x="1230" y="558" text-anchor="middle">respuesta + triage</text>
+<text class="edge-label mono" x="1230" y="570" text-anchor="middle">+ evidencia (JSON)</text>
+
+<!-- ================= NODES ================= -->
+
+<g class="node">
+  <rect x="490" y="30" width="240" height="64" rx="8"></rect>
+  <text class="node-title" x="610" y="56" text-anchor="middle">Paciente</text>
+  <text class="node-sub mono" x="610" y="76" text-anchor="middle">voz, navegador</text>
+</g>
+
+<g class="node">
+  <rect x="490" y="170" width="240" height="64" rx="8"></rect>
+  <text class="node-title" x="610" y="196" text-anchor="middle">Consola</text>
+  <text class="node-sub mono" x="610" y="216" text-anchor="middle">public/index.html</text>
+</g>
+
+<g class="node">
+  <rect x="850" y="170" width="280" height="64" rx="8"></rect>
+  <text class="node-title" x="990" y="196" text-anchor="middle">Registro de evidencia</text>
+  <text class="node-sub mono" x="990" y="216" text-anchor="middle">sourceId · archivo · relevancia</text>
+</g>
+
+<g class="node">
+  <rect x="490" y="310" width="240" height="64" rx="8"></rect>
+  <text class="node-title" x="610" y="336" text-anchor="middle">Servidor</text>
+  <text class="node-sub mono" x="610" y="356" text-anchor="middle">src/server.js</text>
+</g>
+
+<g class="node">
+  <rect x="850" y="310" width="280" height="64" rx="8"></rect>
+  <text class="node-title" x="990" y="336" text-anchor="middle">knowledge/*.md</text>
+  <text class="node-sub mono" x="990" y="356" text-anchor="middle">108 documentos</text>
+</g>
+
+<g class="node escalation">
+  <rect x="40" y="450" width="210" height="64" rx="8"></rect>
+  <text class="node-title" x="145" y="476" text-anchor="middle">Alerta</text>
+  <text class="node-sub mono" x="145" y="496" text-anchor="middle">personal capacitado</text>
+</g>
+
+<g class="node">
+  <rect x="290" y="450" width="220" height="64" rx="8"></rect>
+  <text class="node-title" x="400" y="476" text-anchor="middle">Triage</text>
+  <text class="node-sub mono" x="400" y="496" text-anchor="middle">src/triage.js · reglas</text>
+</g>
+
+<g class="node">
+  <rect x="730" y="450" width="220" height="64" rx="8"></rect>
+  <text class="node-title" x="840" y="476" text-anchor="middle">RAG</text>
+  <text class="node-sub mono" x="840" y="496" text-anchor="middle">src/rag.js · TF-IDF</text>
+</g>
+
+<g class="node">
+  <rect x="490" y="590" width="240" height="64" rx="8"></rect>
+  <text class="node-title" x="610" y="616" text-anchor="middle">Adaptador de modelo</text>
+  <text class="node-sub mono" x="610" y="636" text-anchor="middle">src/llm.js · necesitaModelo()</text>
+</g>
+
+<g class="node">
+  <rect x="290" y="730" width="220" height="64" rx="8"></rect>
+  <text class="node-title" x="400" y="754" text-anchor="middle">Guion clínico</text>
+  <text class="node-sub mono" x="400" y="772" text-anchor="middle">scripted / scripted-routed</text>
+</g>
+<g class="tag-fast">
+  <rect x="345" y="778" width="110" height="16" rx="8"></rect>
+  <text x="400" y="790" text-anchor="middle">2–48 ms</text>
+</g>
+
+<g class="node">
+  <rect x="730" y="730" width="220" height="64" rx="8"></rect>
+  <text class="node-title" x="840" y="754" text-anchor="middle">Llama 3.2 3B</text>
+  <text class="node-sub mono" x="840" y="772" text-anchor="middle">Ollama, local</text>
+</g>
+<g class="tag-slow">
+  <rect x="765" y="778" width="150" height="16" rx="8"></rect>
+  <text x="840" y="790" text-anchor="middle">P50 60.8s · P95 95.3s</text>
+</g>
+
+<g class="node">
+  <rect x="490" y="870" width="240" height="64" rx="8"></rect>
+  <text class="node-title" x="610" y="896" text-anchor="middle">Turno resuelto</text>
+  <text class="node-sub mono" x="610" y="916" text-anchor="middle">reply · engine · métricas</text>
+</g>
+
+<g class="node">
+  <rect x="360" y="1010" width="280" height="64" rx="8"></rect>
+  <text class="node-title" x="500" y="1036" text-anchor="middle">Estado de la llamada</text>
+  <text class="node-sub mono" x="500" y="1056" text-anchor="middle">src/session.js</text>
+</g>
+
+<g class="node">
+  <rect x="360" y="1120" width="280" height="64" rx="8"></rect>
+  <text class="node-title" x="500" y="1146" text-anchor="middle">Resumen estructurado</text>
+  <text class="node-sub mono" x="500" y="1166" text-anchor="middle">GET /api/calls/:id/summary</text>
+</g>
+
+</svg>

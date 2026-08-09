@@ -454,6 +454,10 @@ por invocación con Llama 3.2 3B local.
 ## Enlaces
 
 - Repositorio: `https://github.com/badgomez2727/postop-voice-agent`
-- Diagrama: `docs/architecture.mmd`
+- Diagrama (entregable 02): `docs/architecture.svg` — imagen autocontenida,
+  se ve directo en GitHub. Fuente editable en Mermaid (mismo contenido,
+  otra notación): `docs/architecture.mmd`. Versión navegable con el flujo
+  de decisión anotado y 3 datos duros al pie (privada, pide acceso si hace
+  falta compartirla): <https://claude.ai/code/artifact/d3bf5c85-8b9a-4951-aa3a-1c1dd4182572>
 - README (instalación, ≤15 min, API): `README.md`
 - Reglas del proyecto: `CLAUDE.md`

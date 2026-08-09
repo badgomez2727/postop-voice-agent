@@ -590,18 +590,23 @@ negación) sin cambios.
 
 ## Pendientes antes de entregar
 
-- [ ] **Riesgo a G4 NO mitigado a un nivel aceptable — decisión de producto
-      pendiente, no solo técnica.** Enrutamiento selectivo (la mayoría de
-      los turnos ya no invocan el modelo, 2-48ms) + contexto recortado en
-      los que sí lo invocan — ver decisión 6a/6b. Camino `llm` remedido con
-      N=20 (decisión 6e): **P50 60.8s / P95 95.3s** — el doble del N=7
-      original, y muy por encima del umbral de ~30s fijado como tolerable
-      para no romper la sensación de conversación en vivo. Sigue sin ser
-      "tiempo real" en el camino `llm`; sí lo es en el camino
-      guionado/enrutado, que en esta medición es ~75% de los turnos (25%
-      invoca el modelo, límite superior de la prueba, no del dataset real).
-      Ver README, "Pendiente para la entrega del reto", para las opciones
-      sin decidir todavía.
+- [x] **Decisión de producto sobre el riesgo a G4 — resuelta: opción (a),
+      aceptar la limitación y declararla explícitamente.** Enrutamiento
+      selectivo (la mayoría de los turnos ya no invocan el modelo, 2-48ms) +
+      contexto recortado en los que sí lo invocan — ver decisión 6a/6b.
+      Camino `llm` remedido con N=20 (decisión 6e): **P50 60.8s / P95
+      95.3s** — el doble del N=7 original, y muy por encima del umbral de
+      ~30s fijado como tolerable. No se intentó (b) Groq — ver decisión 5,
+      descontinuado, y remedirlo bajo presión de plazo es un riesgo mayor
+      que el que resuelve — ni (c) acotar aún más el enrutamiento, a costa
+      de naturalidad conversacional sin evidencia de que hiciera falta:
+      G4 en sí (saludo + pregunta trivial) cae en el camino
+      guionado/enrutado, que sí es tiempo real. La limitación queda
+      declarada en README ("Pendiente para la entrega del reto") e
+      `INFORME.md` §11, no oculta. Checkbox sincronizado el 2026-08-09 con
+      lo que esos dos documentos ya afirmaban — no es una decisión nueva de
+      esta sesión, es cerrar el registro para que coincida con el resto de
+      la entrega.
 - [x] Elegir entre Llama 3.2 1B/3B y Phi-3.5 Mini para la entrega (ver
       decisión 5): Llama 3.2 3B, por consistencia (desviación <1s vs. ~5s de
       rango en Phi-3.5 — la rúbrica pide P95). Confirmado de nuevo en
@@ -622,8 +627,27 @@ negación) sin cambios.
       `tools/ingestar-corpus.js`: 104 documentos ingeridos en `knowledge/` desde
       los 107 PDFs de `../reto-oficial/dataset/textos/` (1 sin texto
       extraíble, 2 duplicados por contenido omitidos).
-- [ ] Conexión al dataset clínico vía Delta Share (Databricks).
+- [x] ~~Conexión al dataset clínico vía Delta Share (Databricks).~~ Revisado
+      el 2026-08-09 contra el repositorio oficial del reto completo
+      (README, `docs/rubrica-evaluacion.md`, `docs/stack-tecnico.md`): no
+      aparece en ningún documento oficial. El dataset se entrega como
+      `.xlsx`/PDF locales en `dataset/`, sin mención de Delta Share ni
+      Databricks en ningún lugar del reto. Pendiente huérfano de una idea
+      descartada; no bloquea ningún entregable ni compuerta.
 - [ ] Verificar la compuerta de arranque: instalación y ejecución en 15 minutos
       siguiendo el README, en una máquina limpia (sin contar instalar Ollama
       ni descargar el modelo — ver README, "Cómo correrlo").
-- [ ] Diagrama exportado a imagen y video con demo en pantalla.
+- [x] Diagrama exportado a imagen — `docs/architecture.svg`, 2026-08-09.
+      `mermaid-cli` (necesita Chromium headless) no funcionó en este
+      entorno de desarrollo tras tres intentos distintos; en vez de seguir
+      insistiendo, se redibujó a mano como SVG inline con los mismos nodos
+      y aristas que `docs/architecture.mmd`, reutilizando la paleta real
+      de `public/index.html` (mismo sistema visual que corre en vivo) y
+      anotando el hecho que más importa del diseño: el nivel rojo nunca
+      pasa por el modelo, y el enrutamiento (`necesitaModelo()`) es lo que
+      decide entre 2-48 ms y P50 60.8s. Verificado renderizando a PNG con
+      `@resvg/resvg-js` antes de darlo por bueno -- dos rondas, la primera
+      tenía una etiqueta desbordada sobre un nodo y otra tapada por su
+      propio nodo, corregidas.
+- [ ] Video con demo en pantalla (entregable 04) — requiere grabación en
+      vivo, no se puede generar desde esta sesión.

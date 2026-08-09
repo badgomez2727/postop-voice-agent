@@ -84,7 +84,8 @@ medida en `docs/DECISIONS.md`, decisión 5): `ollama pull phi3.5` y
 
 ## Arquitectura
 
-Diagrama en `docs/architecture.mmd` (Mermaid).
+Diagrama completo (entregable 02): `docs/architecture.svg`. Fuente editable
+en Mermaid: `docs/architecture.mmd`. Resumen:
 
 ```
 Paciente ──voz──▶ Consola ──▶ Servidor ──┬──▶ Triage (reglas deterministas)
