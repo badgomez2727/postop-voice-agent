@@ -353,6 +353,17 @@ reportarlos:**
   estadística fuerte.** El número subió sustancialmente entre N=7 y N=20
   (60.8s vs 15.3s de P50) sin causa única aislada — candidatas sin descartar
   en `docs/DECISIONS.md`, decisión 6e.
+- **El guion avanza aunque la respuesta no sea utilizable.** `scriptedReply()`
+  marca un tema como cubierto en cuanto lo pregunta, no cuando el paciente
+  lo responde con algo interpretable. Verificado el 2026-08-09: una
+  respuesta vaga a la escala de dolor ("no sé, más o menos") no genera
+  ningún hallazgo ni pide aclaración — el guion sigue directo a la
+  siguiente pregunta (fiebre) como si el dolor ya estuviera resuelto.
+  Encontrado y documentado, no corregido en esta sesión a propósito:
+  cambiar cómo avanza el guion es un cambio de flujo conversacional, no
+  una regla de triage aislada, y merece su propio diff con margen para
+  probarlo — no en el último día antes del plazo. Detalle en
+  `docs/DECISIONS.md`, sección 9.
 
 ## 12. Evidencia de proceso
 

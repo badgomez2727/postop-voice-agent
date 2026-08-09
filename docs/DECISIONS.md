@@ -588,6 +588,36 @@ estado bien" → "un 8" da `AMBER-PAIN-SCORE`; en otra llamada, "20000" da
 `needsClarification: true`), más los tres casos de siempre (rojo, ámbar,
 negación) sin cambios.
 
+**Limitación encontrada y NO corregida a propósito (2026-08-09), anotada
+para el informe, no arreglada bajo presión del último día.**
+`scriptedReply()` marca un tema como cubierto (`session.coveredTopics`) en
+el momento en que lo PREGUNTA, no cuando el paciente lo responde de forma
+utilizable -- así que una respuesta vaga a la pregunta de escala ("no sé,
+más o menos") no genera ningún hallazgo, `needsClarification` quede en
+`false`, y el guion avanza a la siguiente pregunta (fiebre) como si el
+dolor ya estuviera resuelto. Verificado contra el servidor real:
+
+```
+Turno 1 -- agente pregunta: "...en una escala de 0 a 10?"
+Turno 2 -- paciente: "no sé, más o menos"
+  → triage: {"level":"none", "needsClarification":false, "findings":[]}
+  → agente sigue con: "¿Ha sentido fiebre o escalofríos...?"
+```
+
+`evaluarPuntajeDolor()` (más arriba) solo actúa cuando la respuesta ES un
+número reconocible -- por diseño, para no interpretar cualquier frase como
+un puntaje. El hueco es el paso siguiente: no hay una regla que detecte
+"se le preguntó una escala numérica y la respuesta no trae ningún número
+interpretable" y lo trate como `needsClarification`. Es distinto del caso
+ya cubierto por `AMBIGUOUS`/`CLARIFY-VAGUE` (que reacciona a frases como
+"me siento raro" sin importar qué se preguntó) -- este hueco es específico
+del contexto "se pidió un número y no llegó ninguno". No se corrige en
+esta sesión: cambiar cómo avanza el guion es un cambio de flujo
+conversacional, no una regla de triage aislada, y merece su propio diff y
+su propia aprobación explícita en una sesión con más margen que el último
+día antes del plazo. Candidato natural para "qué cambiarías con dos
+semanas más" (`INFORME.md` §14, pregunta 2 del video).
+
 ## Pendientes antes de entregar
 
 - [x] **Decisión de producto sobre el riesgo a G4 — resuelta: opción (a),
