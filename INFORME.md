@@ -491,23 +491,29 @@ respuestas del modelo, mediciones crudas — no resúmenes sin cómo verificarlo
 
 ## 13. Capturas del demo
 
-*(Pendiente de completar antes de la entrega — requiere ejecutar la
-aplicación con voz real en el navegador, no algo que se pueda generar sin
-correr el sistema en vivo.)*
+Cada fila ya se probó en vivo en esta sesión (ver `docs/DECISIONS.md` y
+el historial de commits) — solo falta el archivo de imagen. Guarda cada
+captura en `docs/capturas/` con el nombre exacto de la tabla; en cuanto el
+archivo exista, la imagen aparece sola aquí abajo (son rutas relativas
+normales de Markdown, GitHub las renderiza directo).
 
-Capturas mínimas a incluir:
+| # | Qué capturar | Frase / acción exacta | Archivo |
+|---|---|---|---|
+| 1 | Saludo + respuesta del paciente con evidencia visible | *"me duele un poco la herida pero con la pastilla se calma"* | `docs/capturas/01-evidencia.png` |
+| 2 | Caso rojo escalando, indicador en rojo | *"estoy sangrando mucho y no para"* | `docs/capturas/02-caso-rojo.png` |
+| 3 | Documento nuevo citado como evidencia (verde) | Sube un documento de prueba (ver `docs/DECISIONS.md`, sección "Groq vuelve al bucle en vivo" para uno ya usado) y pregúntale por su contenido con `?` en el campo de texto | `docs/capturas/03-conocimiento-nuevo.png` |
+| 4 | El mismo documento eliminado, ya sin esa evidencia | Bórralo desde la consola y repite la misma pregunta | `docs/capturas/04-conocimiento-olvidado.png` |
+| 5 | Resumen estructurado descargado | Botón "Terminar y resumir" al final de una llamada | `docs/capturas/05-resumen.png` |
+| 6 | Motor/latencia por turno, guionado vs. modelo | Cualquier turno `scripted-routed` (ms) junto a uno `llm` (s) en la misma conversación | `docs/capturas/06-motor-latencia.png` |
 
-- [ ] Consola de llamada: saludo del agente + una respuesta del paciente con
-      el registro de evidencia visible (documento + relevancia).
-- [ ] Un caso rojo escalando (ej. "estoy sangrando mucho y no para") con el
-      indicador de estado en rojo.
-- [ ] Consola de conocimiento: subir un documento nuevo, verlo "procesado y
-      disponible", y la siguiente pregunta usándolo.
-- [ ] El mismo documento eliminado, y la pregunta ya sin esa evidencia.
-- [ ] Resumen estructurado descargado al final de una llamada.
-- [ ] La etiqueta de motor/latencia por turno (`public/index.html`, cambio
-      del 2026-08-08) mostrando la diferencia entre un turno guionado (ms) y
-      uno que invocó el modelo (s).
+<!-- Se renderizan automáticamente apenas existan los archivos: -->
+
+![Evidencia citada](capturas/01-evidencia.png)
+![Caso rojo](capturas/02-caso-rojo.png)
+![Conocimiento nuevo citado](capturas/03-conocimiento-nuevo.png)
+![Conocimiento olvidado](capturas/04-conocimiento-olvidado.png)
+![Resumen estructurado](capturas/05-resumen.png)
+![Motor y latencia por turno](capturas/06-motor-latencia.png)
 
 ## 14. Preparación para las preguntas de cierre del video
 
