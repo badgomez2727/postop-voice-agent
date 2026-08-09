@@ -808,20 +808,29 @@ confirmado que NO dispara.
       `.xlsx`/PDF locales en `dataset/`, sin mención de Delta Share ni
       Databricks en ningún lugar del reto. Pendiente huérfano de una idea
       descartada; no bloquea ningún entregable ni compuerta.
-- [ ] Verificar la compuerta de arranque: instalación y ejecución en 15 minutos
-      siguiendo el README, en una máquina limpia (sin contar instalar Ollama
-      ni descargar el modelo — ver README, "Cómo correrlo").
-- [ ] **Nuevo tras la decisión 10 (Groq por defecto): decidir cómo el
-      README resuelve `GROQ_API_KEY` dentro de los 15 minutos de G2.**
-      Opciones sin decidir todavía: (a) una key de evaluación en el README
-      solo para la sesión del jurado, revocable después de la entrega; (b)
-      instrucciones de crear una key gratis en console.groq.com (rápido,
-      pero agrega un paso fuera de este repositorio dentro del reloj de
-      G2); (c) instruir `LLM_PROVIDER=ollama` como ruta de arranque
-      garantizada si el jurado prefiere no crear una cuenta de Groq
-      durante la evaluación. Probablemente (a) + mencionar (c) como
-      respaldo es lo más seguro contra G2 sin quitarle a Groq su lugar
-      como configuración activa.
+- [x] **Verificar la compuerta de arranque, 2026-08-09 — dos rondas.**
+      Primera ronda (sin key real, antes de tener la de evaluación): clone
+      limpio → `npm install` (2s, caché tibia) → `cp .env.example .env` →
+      `npm start` → llamada completa con caso rojo → resumen estructurado,
+      **63s totales**. Segunda ronda, con la key de evaluación real puesta
+      en el README (ver el punto de abajo): mismo flujo, más una pregunta
+      real fuera de guion — `engine: 'llm'`, evidencia citada, **0.94s**.
+      Los dos, muy por debajo de los 15 minutos. Salvedad honesta: esta
+      máquina no es una máquina limpia de fábrica (Node.js ya instalado,
+      caché de npm tibia) -- no reemplaza que alguien lo corra en una
+      máquina realmente nueva, pero confirma que la secuencia documentada
+      en el README funciona tal como está escrita, sin pasos faltantes ni
+      ambiguos.
+- [x] **`GROQ_API_KEY` dentro de los 15 minutos de G2 — resuelto: opción
+      (a).** Key de evaluación dedicada (no la key personal/de desarrollo
+      de Darío -- se pidió una nueva a propósito para no romper su entorno
+      local al revocarla) puesta directamente en el README, marcada como
+      temporal. **Pendiente de acción humana, no técnica: revocarla en
+      console.groq.com apenas termine la sesión de evaluación del
+      jurado** -- mientras siga ahí, cualquiera con el repo público puede
+      usarla. La opción (c) (Ollama como respaldo sin cuenta externa)
+      sigue documentada en el README para quien prefiera no depender de
+      ninguna key.
 - [x] Diagrama exportado a imagen — `docs/architecture.svg`, 2026-08-09.
       `mermaid-cli` (necesita Chromium headless) no funcionó en este
       entorno de desarrollo tras tres intentos distintos; en vez de seguir

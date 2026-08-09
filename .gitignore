@@ -2,3 +2,8 @@ node_modules/
 .env
 *.log
 knowledge/*.local.md
+# Documento de prueba de la compuerta G5 (conocimiento en caliente) -- se
+# sube y se elimina desde la consola en cada ensayo; no es parte del
+# corpus entregado y no debe quedar commiteado (ya pasó dos veces sin
+# esto, 2026-08-09).
+knowledge/prueba-g5-*.md

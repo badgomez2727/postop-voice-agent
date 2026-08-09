@@ -21,15 +21,26 @@ capacitado.
 
 ## Cómo correrlo
 
-Requiere Node.js 20 o superior y una `GROQ_API_KEY` (gratis, sin tarjeta,
-en [console.groq.com](https://console.groq.com/keys) — crear la cuenta y la
-key toma un par de minutos, dentro de los 15 de la compuerta G2).
+Requiere Node.js 20 o superior.
+
+**Key de evaluación, lista para usar — no hace falta crear cuenta para
+correr esto dentro de los 15 minutos de la compuerta G2:**
+
+```
+GROQ_API_KEY=<PENDIENTE_KEY_EVALUACION>
+```
+
+> Esta key es temporal, generada solo para la ventana de evaluación de
+> este reto, y se revoca apenas termina. Si ya no funciona, o prefieres
+> usar la tuya: gratis, sin tarjeta, en
+> [console.groq.com/keys](https://console.groq.com/keys) — un par de
+> minutos, dentro de los 15 de todas formas.
 
 ```bash
 npm install
 cp .env.example .env
-# Edita .env: pega tu GROQ_API_KEY. El resto ya viene configurado
-# (LLM_PROVIDER=groq, GROQ_MODEL=llama-3.3-70b-versatile).
+# Edita .env: pega la GROQ_API_KEY de arriba (o la tuya). El resto ya
+# viene configurado (LLM_PROVIDER=groq, GROQ_MODEL=llama-3.3-70b-versatile).
 npm start
 ```
 
