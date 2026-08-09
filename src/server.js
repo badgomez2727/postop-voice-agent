@@ -84,7 +84,13 @@ app.post('/api/calls/:id/turns', async (req, res) => {
     const turnStartedAt = Date.now();
     let ragQueries = 0;
 
-    const assessment = assess(utterance);
+    // Contexto mínimo para interpretar un puntaje de dolor aislado ("8",
+    // "le doy un 9"): coveredTopics.at(-1) en este punto todavía es el
+    // último tema que el agente preguntó -- el tema de ESTE turno se
+    // agrega recién en recordTurn(), más abajo. Ver src/triage.js,
+    // evaluarPuntajeDolor().
+    const lastAskedTopic = session.coveredTopics[session.coveredTopics.length - 1];
+    const assessment = assess(utterance, { lastAskedTopic });
     // k: 1, no 3 -- ver src/llm.js: procesar el contexto de entrada, no
     // generar la salida, es el cuello de botella medido con el modelo
     // local (docs/DECISIONS.md, decisión 5). Un pasaje menos es contexto

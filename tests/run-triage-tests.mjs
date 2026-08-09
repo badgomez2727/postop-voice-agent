@@ -29,7 +29,7 @@ let passed = 0;
 const failures = [];
 
 for (const testCase of suite) {
-  const actual = assess(testCase.utterance);
+  const actual = assess(testCase.utterance, testCase.context ?? {});
   const expect = testCase.expect;
   const problems = [];
 

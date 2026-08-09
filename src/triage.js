@@ -419,9 +419,59 @@ const AMBIGUOUS = [
   { id: 'CLARIFY-COLLOQUIAL', patterns: [/maluc\w+/i, /achac\w+/i, /jodid\w+/i, /flojera/i, /descompuest\w+/i] }
 ];
 
+// ---- Puntaje numérico de dolor (requiere contexto) ------------------------
+//
+// assess() no sabe qué preguntó el agente -- server.js pasa opcionalmente
+// context.lastAskedTopic (el último tema cubierto en el guion, en el
+// momento de este turno). Sin esto, un paciente que responde con un número
+// puro a "en una escala de 0 a 10, ¿qué tan fuerte es?" no dispara ningún
+// hallazgo -- AMBER-PAIN (arriba) solo reconoce palabras ("insoportable",
+// el literal "10 de 10"), nunca un número suelto. Encontrado probando la
+// consola en vivo (2026-08-08).
+//
+// Acotado a propósito: solo se lee como puntaje de dolor si la respuesta
+// ES el número (con adornos mínimos -- "un 8", "8 de 10", "le doy un 9") y
+// nada más. Una frase más larga que solo MENCIONA un número ("me duele
+// desde hace 3 días") no debe leerse como "3 de dolor" -- el ancla ^...$
+// lo impide estructuralmente, no por una lista de excepciones.
+// \d+ sin tope -- el rango válido (0-10) se valida después comparando el
+// número, no acotando cuántos dígitos puede escribir. Un tope aquí (ej.
+// \d{1,4}) dejaría "20000" sin hacer match en absoluto -- ni como puntaje
+// válido ni como fuera de rango -- exactamente el caso que esto existe
+// para atrapar.
+const PATRON_PUNTAJE_DOLOR_A_SOLAS =
+  /^\s*(?:yo\s+)?(?:le\s+doy\s+)?(?:(?:un|el|es)\s+)*(\d+)(?:\s*(?:de\s*(?:10|dolor)|\s*\/\s*10))?\s*[.!]?\s*$/i;
+
+// Umbral tomado literalmente de knowledge/03-manejo-del-dolor-y-medicacion.md:
+// "Un dolor de 7 o más que no baja... debe reportarse para valoración."
+const UMBRAL_DOLOR_AMBAR = 7;
+
+function evaluarPuntajeDolor(utterance, context) {
+  if (context?.lastAskedTopic !== 'dolor') return null;
+  const match = utterance.match(PATRON_PUNTAJE_DOLOR_A_SOLAS);
+  if (!match) return null;
+  const score = Number(match[1]);
+  // Fuera de 0-10: la escala pedida no admite ese número -- no es un
+  // hallazgo clínico interpretable, es una respuesta que no encaja con lo
+  // que se preguntó. needsClarification, no un nivel amber/red inventado.
+  if (score > 10) return { outOfRange: true };
+  if (score >= UMBRAL_DOLOR_AMBAR) {
+    return {
+      finding: {
+        id: 'AMBER-PAIN-SCORE',
+        level: 'amber',
+        label: 'Dolor autorreportado en escala alta',
+        domain: 'dolor',
+        trigger: match[0].trim()
+      }
+    };
+  }
+  return null; // 0-6: dentro de lo esperado, sin hallazgo -- igual que AMBER-PAIN con dolor leve
+}
+
 const LEVEL_ORDER = { none: 0, amber: 1, red: 2 };
 
-export function assess(utterance) {
+export function assess(utterance, context = {}) {
   const clauses = splitClauses(utterance).map(text => ({ text, normalized: stripAccents(text) }));
   const fired = [];
 
@@ -440,7 +490,10 @@ export function assess(utterance) {
     }
   }
 
-  const needsClarification = AMBIGUOUS.some(group =>
+  const puntajeDolor = evaluarPuntajeDolor(utterance, context);
+  if (puntajeDolor?.finding) fired.push(puntajeDolor.finding);
+
+  const needsClarification = Boolean(puntajeDolor?.outOfRange) || AMBIGUOUS.some(group =>
     group.patterns.some(pattern => pattern.test(utterance))
   );
 

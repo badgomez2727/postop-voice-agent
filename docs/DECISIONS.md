@@ -533,6 +533,61 @@ la lógica de reinicio automático del `SpeechRecognition` tiene comportamiento
 inconsistente entre navegadores y preferí no arriesgar una regresión sin
 poder verificarla en vivo.
 
+## 9. Puntaje numérico de dolor, con contexto (aprobado explícitamente)
+
+**El problema.** Encontrado probando la consola en vivo (2026-08-08):
+`assess()` nunca interpreta un número suelto como puntaje de dolor.
+`AMBER-PAIN` solo reconoce palabras ("insoportable", "10 de 10") — si el
+paciente responde a "en una escala de 0 a 10, ¿qué tan fuerte es?" con un
+número puro ("8", "le doy un 9"), ningún hallazgo dispara, sin importar qué
+tan alto sea el número. Y un número sin sentido para esa escala ("20000",
+"11") tampoco produce ninguna reacción — el guion sigue adelante como si la
+respuesta fuera válida.
+
+**Por qué no es trivial.** `assess(utterance)` no sabía qué preguntó el
+agente. Interpretar cualquier número suelto en cualquier frase como
+"puntaje de dolor" sin ese contexto es peligroso: "llevo 3 días bien" no
+debe leerse como "3 de dolor". Un prototipo con contexto ya existía
+(`assessInContextPrototype()`, `tools/evaluar-triage.js`) pero nunca se
+adoptó en producción porque `server.js` no le pasaba ese contexto a
+`assess()`.
+
+**Decisión.** `assess(utterance, context)` — nuevo segundo parámetro
+opcional, `context.lastAskedTopic`. `server.js` lo llena con
+`session.coveredTopics.at(-1)` (el último tema que el agente preguntó,
+disponible antes de que `recordTurn()` agregue el de este turno).
+`evaluarPuntajeDolor()` solo actúa cuando `lastAskedTopic === 'dolor'` **y**
+la respuesta ES el número, casi a solas ("un 8", "8 de 10", "le doy un 9") —
+anclado con `^...$`, no una búsqueda libre dentro de la frase.
+
+- **≥7** (umbral literal de `knowledge/03-manejo-del-dolor-y-medicacion.md`:
+  "un dolor de 7 o más... debe reportarse para valoración") → `AMBER-PAIN-SCORE`,
+  mismo dominio `dolor` que `AMBER-PAIN` — participa igual en la
+  acumulación (decisión 6).
+- **0-6** → sin hallazgo, igual que un dolor leve descrito en palabras.
+- **>10** (fuera de la escala pedida) → `needsClarification: true`, no un
+  nivel inventado — el agente pide que lo confirme, no lo ignora ni lo
+  interpreta como si tuviera sentido.
+
+**Sin `context.lastAskedTopic === 'dolor'`, el comportamiento es idéntico al
+de antes** — verificado con un caso de prueba dedicado
+(`pain-score-context-06-sin-contexto`) para que esto no se active por
+accidente si algún día se llama `assess()` sin contexto.
+
+**Bug encontrado y corregido durante la implementación.** La primera versión
+de `PATRON_PUNTAJE_DOLOR_A_SOLAS` limitaba el número a `\d{1,4}` — "20000"
+(5 dígitos) no hacía match en absoluto, así que ni se leía como puntaje
+válido ni como fuera de rango: el caso que el patrón existía para atrapar
+se le escapaba por el propio patrón. Corregido a `\d+` sin tope; el rango
+0-10 se valida comparando el número después del match, no limitando cuántos
+dígitos puede escribir.
+
+Verificado: `npm test` (86/86 en triage, con 7 casos nuevos) y manualmente
+contra el servidor real, dentro de una llamada completa (apertura → "he
+estado bien" → "un 8" da `AMBER-PAIN-SCORE`; en otra llamada, "20000" da
+`needsClarification: true`), más los tres casos de siempre (rojo, ámbar,
+negación) sin cambios.
+
 ## Pendientes antes de entregar
 
 - [ ] **Riesgo a G4 NO mitigado a un nivel aceptable — decisión de producto

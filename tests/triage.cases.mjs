@@ -142,6 +142,61 @@ export const cases = [
     expect: { level: 'amber', findingIds: ['AMBER-PAIN'] }
   },
 
+  // ---- Puntaje numérico de dolor, con contexto ----------------------------
+  {
+    id: 'pain-score-context-01',
+    category: 'contexto/dolor',
+    utterance: 'un 8',
+    context: { lastAskedTopic: 'dolor' },
+    expect: { level: 'amber', findingIds: ['AMBER-PAIN-SCORE'] }
+  },
+  {
+    id: 'pain-score-context-02',
+    category: 'contexto/dolor',
+    utterance: 'le doy un 9',
+    context: { lastAskedTopic: 'dolor' },
+    expect: { level: 'amber', findingIds: ['AMBER-PAIN-SCORE'] }
+  },
+  {
+    id: 'pain-score-context-03-leve',
+    category: 'contexto/dolor',
+    utterance: '3',
+    context: { lastAskedTopic: 'dolor' },
+    expect: { level: 'none' }
+  },
+  {
+    id: 'pain-score-context-04-fuera-de-rango',
+    category: 'contexto/dolor',
+    utterance: '20000',
+    context: { lastAskedTopic: 'dolor' },
+    expect: { level: 'none', needsClarification: true }
+  },
+  {
+    id: 'pain-score-context-05-fuera-de-rango',
+    category: 'contexto/dolor',
+    utterance: '11',
+    context: { lastAskedTopic: 'dolor' },
+    expect: { level: 'none', needsClarification: true }
+  },
+  {
+    id: 'pain-score-context-06-sin-contexto',
+    category: 'contexto/dolor',
+    // El mismo número, pero sin saber que se preguntó por dolor -- no debe
+    // interpretarse como puntaje. Verifica que el contexto realmente acota
+    // la regla, no que "8" solo siempre dispare algo.
+    utterance: '8',
+    expect: { level: 'none' }
+  },
+  {
+    id: 'pain-score-context-07-frase-larga-no-dispara',
+    category: 'contexto/dolor',
+    // Un número que aparece dentro de una frase más larga no es un
+    // puntaje de dolor -- el ancla ^...$ del patrón lo excluye.
+    utterance: 'me duele desde hace 3 días',
+    context: { lastAskedTopic: 'dolor' },
+    expect: { level: 'none' }
+  },
+
   // ---- AMBER: vómito ------------------------------------------------------
   {
     id: 'amber-vomit-01',
