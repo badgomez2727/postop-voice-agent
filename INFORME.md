@@ -425,6 +425,23 @@ reportarlos:**
   una regla de triage aislada, y merece su propio diff con margen para
   probarlo — no en el último día antes del plazo. Detalle en
   `docs/DECISIONS.md`, sección 9.
+- **Una pregunta real del paciente, dicha por voz, puede no llegar nunca al
+  modelo.** El enrutamiento exige un signo de interrogación explícito en
+  la transcripción (`PATRON_PREGUNTA_PACIENTE`, `src/llm.js`) — decisión
+  deliberada, no un descuido: la alternativa (detectar preguntas por la
+  palabra inicial) se probó primero y se retiró porque, contra el dataset
+  real, disparaba el modelo sobre afirmaciones como "Como bien, doctor,
+  sin problema" (27 de 1.920 turnos reales empiezan con "como" sin ser
+  pregunta), a 70+ segundos por disparo. El costo aceptado a cambio: el
+  reconocimiento de voz del navegador normalmente no transcribe signos de
+  interrogación. **Confirmado en vivo el 2026-08-09**, no solo en teoría:
+  tres intentos reales por voz de "¿qué es la enzima Rubisco-Kest7?" (una
+  prueba de G5) se transcribieron sin ningún "?" y las tres cayeron al
+  guion, sin invocar al modelo ni citar el documento nuevo — el mismo
+  camino que sí funciona escribiendo la pregunta en el campo de texto de
+  la consola. No se corrige en esta entrega: reabrir el heurístico de
+  palabra inicial reintroduciría el problema que la corrección original ya
+  midió y evitó. Detalle completo en `docs/DECISIONS.md`, decisión 6a.
 
 ## 12. Evidencia de proceso
 

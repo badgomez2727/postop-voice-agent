@@ -168,6 +168,23 @@ no se enruta al modelo — costo de naturalidad conversacional, no de
 seguridad (`triage.js` evalúa cada turno igual, invoque o no al modelo).
 Cubierto en `tests/run-llm-routing-tests.mjs`.
 
+**Riesgo confirmado en vivo (2026-08-09), no solo teórico.** Darío
+preguntó tres veces por voz real "¿qué es la enzima Rubisco-Kest7?" contra
+el servidor con Groq activo (prueba de G5, `docs/DECISIONS.md` no tenía
+esto registrado con evidencia real todavía). El reconocimiento de voz del
+navegador transcribió las tres sin ningún "?" ("Qué es la enzima rubisco
+que 7", "Qué es la enzima rubisco", "Qué es la enzima rubisco Qué es 7")
+y las tres cayeron al guion (`scripted-routed`), sin invocar al modelo ni
+citar el documento nuevo. El riesgo documentado arriba no es hipotético:
+es el comportamiento real observado la primera vez que alguien probó una
+pregunta genuina por voz, no escrita. No se corrige hoy -- reabrir el
+heurístico de palabra inicial bajo presión del último día es exactamente
+el riesgo que la corrección de arriba ya midió y evitó. Mitigación para
+demo/video: usar el campo de texto (`public/index.html`, "O escriba lo
+que dice el paciente") para mostrar el camino `llm`/RAG en cámara, y voz
+real para el resto de la llamada -- el campo de texto es una función real
+de la consola, no un atajo inventado para la grabación.
+
 ### 6b. Contexto recortado en las invocaciones que sí ocurren
 
 - `k: 1` en vez de `k: 3` (`src/server.js`) — un pasaje del RAG, no tres.
