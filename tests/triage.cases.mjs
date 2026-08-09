@@ -579,9 +579,35 @@ export const cases = [
     id: 'amber-fever-below-threshold-01',
     category: 'red/fiebre-alta',
     // El patrón numérico de AMBER-FEVER solo reconoce números que empiezan
-    // en 38/39/40 -- un 37.8 sin la palabra "fiebre" nunca ha disparado
+    // en 38/39/4x -- un 37.8 sin la palabra "fiebre" nunca ha disparado
     // nada, con o sin RED-FEVER-HIGH. Se documenta a propósito.
     utterance: 'Me tomé la temperatura y marcó 37.8 grados.',
+    expect: { level: 'none' }
+  },
+  {
+    // Encontrado en prueba manual en vivo contra el servidor real
+    // (2026-08-09): "tengo mi temperatura en 41" (sin "grados") daba
+    // level:none -- el patrón "sin grados" solo reconocía 38/39/40, no
+    // 41-49. La misma fiebre alta, dicha sin la palabra "grados", se
+    // perdía en silencio. Ver comentario junto al patrón en triage.js.
+    id: 'red-fever-high-sin-grados-41',
+    category: 'red/fiebre-alta',
+    utterance: 'Tengo mi temperatura en 41 desde esta mañana.',
+    expect: { level: 'red', findingIds: ['AMBER-FEVER', 'RED-FEVER-HIGH'] }
+  },
+  {
+    id: 'red-fever-high-sin-grados-45',
+    category: 'red/fiebre-alta',
+    utterance: 'La temperatura marcó 45, no sé qué hacer.',
+    expect: { level: 'red', findingIds: ['AMBER-FEVER', 'RED-FEVER-HIGH'] }
+  },
+  {
+    // El piso en 38 se queda igual a propósito -- un número de dos cifras
+    // sin relación con fiebre (aquí, la edad) no debe dispararse solo por
+    // compartir cláusula con "temperatura".
+    id: 'fever-context-no-false-positive-age',
+    category: 'red/fiebre-alta',
+    utterance: 'Tengo 45 años y hoy me tomé la temperatura, todo normal.',
     expect: { level: 'none' }
   },
 

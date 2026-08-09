@@ -102,6 +102,33 @@ function stripAccents(text) {
 // docs/evaluacion-triage.md, no una regresión de esta corrección.
 const CONTEXTO_TEMPERATURA = /\b(temperatura|marc\w*|termometro)\b/i;
 
+// No basta con que la palabra de contexto comparta CLÁUSULA con el número
+// -- splitClauses() no corta en comas, así que una cláusula puede ser una
+// frase larga entera. "Tengo 45 años y hoy me tomé la temperatura, todo
+// normal" comparte cláusula sin que el 45 tenga nada que ver con la
+// temperatura -- encontrado escribiendo el caso de prueba para el propio
+// arreglo de "fiebre sin 'grados'" de abajo (2026-08-09), antes de que
+// llegara a producción: ampliar el rango de 38-40 a 38-49 sin esto habría
+// convertido "tengo 45 años" en una fiebre roja cada vez que compartiera
+// cláusula con la palabra "temperatura". Exige que la palabra de contexto
+// esté a un máximo de VENTANA_CONTEXTO_TEMPERATURA caracteres del número,
+// en cualquier dirección (antes o después) -- suficiente para "tengo mi
+// temperatura en 41" (15) y "la temperatura marcó 45" (6), no para el
+// caso de la edad (25).
+const VENTANA_CONTEXTO_TEMPERATURA = 20;
+
+function contextoTemperaturaCercano(clauseText, matchIndex) {
+  // Misma lista de palabras que CONTEXTO_TEMPERATURA -- reconstruida como
+  // global (flag "g") porque exec() con estado propio es lo que permite
+  // recorrer TODAS las coincidencias en la cláusula, no solo la primera.
+  const patron = new RegExp(CONTEXTO_TEMPERATURA.source, 'gi');
+  let coincidencia;
+  while ((coincidencia = patron.exec(clauseText))) {
+    if (Math.abs(coincidencia.index - matchIndex) <= VENTANA_CONTEXTO_TEMPERATURA) return true;
+  }
+  return false;
+}
+
 // Formas adjetivales de fiebre que no comparten el literal "fiebre":
 // "afiebrada" cambia la última vocal por concordancia de género, así que
 // /fiebre/i nunca la alcanza. "acalorada" es la forma coloquial más común
@@ -236,13 +263,20 @@ const RULES = [
       },
       // "Me tomé la temperatura y marcó 38.7" -- mismo número, mismo umbral,
       // sin "grados". Ver CONTEXTO_TEMPERATURA arriba. Acotado al mismo
-      // rango de prefijo (38/39/40) que ya usa AMBER-FEVER más abajo, para
+      // rango de prefijo (38/39/4x) que ya usa AMBER-FEVER más abajo, para
       // no romper el caso ya probado de que "37.8" sin la palabra "fiebre"
       // no dispara nada (tests/triage.cases.mjs, amber-fever-below-threshold-01).
+      // "4x" (no solo "40"), corregido 2026-08-09: encontrado en prueba
+      // manual en vivo -- "tengo mi temperatura en 41" (sin "grados") no
+      // disparaba nada, level:none, mientras que la misma lectura CON
+      // "grados" sí escalaba a rojo por el patrón de arriba. La misma
+      // fiebre no puede depender de si el paciente dijo la palabra
+      // "grados" o no. El piso en 38 se queda igual a propósito: 36/37 es
+      // temperatura normal, no cuenta como fiebre.
       {
-        regex: /\b((?:38|39|40)(?:[.,]\d+)?)\b/,
+        regex: /\b((?:38|39|4\d)(?:[.,]\d+)?)\b/,
         validate: match => {
-          if (!CONTEXTO_TEMPERATURA.test(match.input)) return false;
+          if (!contextoTemperaturaCercano(match.input, match.index)) return false;
           const value = parseFloat(match[1].replace(',', '.'));
           return Number.isFinite(value) && value >= 38.5;
         }
@@ -261,12 +295,12 @@ const RULES = [
       { regex: /me\s+hierv\w+/i },
       { regex: /destemplanza/i },
       // Mismo número que RED-FEVER-HIGH, sin "grados" -- ver comentario
-      // arriba. Sin el umbral de 38.5: cualquier lectura en 38/39/40 con
+      // arriba. Sin el umbral de 38.5: cualquier lectura en 38/39/4x con
       // contexto de temperatura ya es "fiebre reportada", igual que ya pasa
       // hoy con el patrón de arriba cuando sí trae "grados".
       {
-        regex: /\b(?:38|39|40)(?:[.,]\d+)?\b/,
-        validate: match => CONTEXTO_TEMPERATURA.test(match.input)
+        regex: /\b(?:38|39|4\d)(?:[.,]\d+)?\b/,
+        validate: match => contextoTemperaturaCercano(match.input, match.index)
       },
       { regex: FORMA_ADJETIVAL_FIEBRE }
     ]
