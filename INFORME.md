@@ -244,6 +244,18 @@ prueba manual contra el servidor real). No cambió el número oficial de arriba
 porque el dataset oficial no usa esa formulación exacta — el hallazgo vino de
 probar el sistema con frases que un paciente diría, no del dataset.
 
+**Sangrado sin intensificador y fiebre alta sin "grados", corregidos el
+2026-08-09.** Dos hallazgos de pruebas manuales en vivo, no del dataset:
+"estoy sangrando" a secas no disparaba nada (`RED-BLEEDING` exigía "mucho"
+o "no para"); "tengo mi temperatura en 41" tampoco, mientras que la misma
+lectura con la palabra "grados" sí escalaba — la fiebre no puede depender
+de un detalle lingüístico. Ambos corregidos con aprobación explícita
+(`docs/DECISIONS.md`, sección 11); el segundo arreglo casi introduce un
+falso positivo real (la edad del paciente leída como temperatura),
+atrapado escribiendo el caso de prueba antes de que llegara a producción.
+Verificado: `npm test` (92/92 en triage) y manualmente contra el servidor
+real.
+
 **Puntaje numérico de dolor, con contexto (2026-08-08).** `assess()` nunca
 interpretaba un número suelto como puntaje de dolor — si el paciente
 respondía a "en una escala de 0 a 10, ¿qué tan fuerte es?" con "un 8" o

@@ -710,6 +710,41 @@ debe depender de la disponibilidad de una API externa. Lo que cambia es
 que el camino `llm`, cuando sí se invoca, ya no es la parte lenta de la
 conversación.
 
+## 11. Fiebre alta sin "grados": el mismo dato, dicho de otra forma, no escalaba (2026-08-09)
+
+**Encontrado en prueba manual en vivo** (Darío, contra el servidor con
+Groq activo, transcripción completa pegada en el chat): el paciente dijo
+"tengo mi temperatura en 45" y la llamada nunca escaló -- ese mismo turno,
+un poco después, "tengo 45 grados de temperatura" sí escaló a rojo de
+inmediato. Verificado y reproducido: el patrón "sin grados" de
+`RED-FEVER-HIGH`/`AMBER-FEVER` anclaba el número a la alternativa literal
+`38|39|40` -- cualquier lectura de 41 en adelante, dicha sin la palabra
+"grados", no disparaba nada. Una fiebre de 41°C reportada sin ese detalle
+lingüístico no es un caso de borde raro, es exactamente el tipo de falso
+negativo que la regla 6 de `CLAUDE.md` pide tratar como falla catastrófica.
+
+**Arreglo (aprobado explícitamente antes de aplicar):** `38|39|40` →
+`38|39|4\d` (cubre 40-49) en ambas reglas. El piso en 38 se queda igual a
+propósito -- 36/37 es temperatura normal.
+
+**Riesgo nuevo que ese mismo arreglo habría introducido, atrapado
+escribiendo el caso de prueba antes de que llegara a producción:** ampliar
+el rango a 40-49 sin más habría convertido cualquier mención de la edad de
+un paciente de 40 a 49 años en una fiebre roja, cada vez que compartiera
+cláusula con la palabra "temperatura" -- "tengo 45 años y hoy me tomé la
+temperatura, todo normal" comparte cláusula sin relación real, porque
+`splitClauses()` no corta en comas y una cláusula puede ser una frase
+larga entera. Corregido con `contextoTemperaturaCercano()`: la palabra de
+contexto tiene que estar a máximo 20 caracteres del número, no solo
+compartir cláusula -- 15 y 6 caracteres para los dos casos reales, 25 para
+el caso de la edad (queda excluido). Ver el diff completo y el
+razonamiento en el commit `a36d557`.
+
+Verificado: `npm test` (92/92 en triage) y manualmente contra el servidor
+real -- los tres casos de siempre (rojo, ámbar, negación), los dos casos
+de fiebre sin "grados" (41 y 45), y el falso positivo de la edad,
+confirmado que NO dispara.
+
 ## Pendientes antes de entregar
 
 - [x] **Decisión de producto sobre el riesgo a G4 — resuelta: opción (a),
