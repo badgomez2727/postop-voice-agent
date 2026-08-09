@@ -192,6 +192,7 @@
   .src .pct { color: var(--text-dim); font-size: 11px; }
 
   .no-src { color: var(--amber); font-size: 11.5px; }
+  .no-claim { color: var(--text-dim); font-size: 11.5px; }
 
   .flag {
     display: inline-block; font-size: 10.5px; letter-spacing: 0.1em;
@@ -352,18 +353,31 @@ function speak(text) {
   speechSynthesis.speak(utterance);
 }
 
-function addLedgerEntry({ claim, evidence, grounded, triage }) {
+// Solo `engine: 'llm'` hace una afirmación clínica que podría necesitar
+// respaldo del RAG -- el guion clínico fijo (scripted / scripted-routed /
+// scripted-fallback) siempre pregunta la siguiente pregunta del guion o
+// repite un mensaje canónico de escalamiento; nunca afirma nada usando el
+// pasaje que retrieve() encontró para lo que dijo el paciente. Antes de
+// este cambio, el registro de evidencia mostraba ese pasaje como si
+// respaldara la pregunta del guion siguiente -- confuso incluso cuando el
+// pasaje era irrelevante para esa pregunta, porque en realidad nunca fue
+// la base de nada que el agente dijera en ese turno. Encontrado en pruebas
+// manuales, 2026-08-09.
+function addLedgerEntry({ claim, evidence, grounded, triage, engine }) {
   $('ledgerEmpty')?.remove();
   const entry = document.createElement('div');
   entry.className = 'entry';
-  entry.dataset.grounded = String(grounded && evidence.length > 0);
+  const esAfirmacionClinica = engine === 'llm';
+  if (esAfirmacionClinica) {
+    entry.dataset.grounded = String(grounded && evidence.length > 0);
+  } // si no, se deja sin marcar -- .entry ya usa un borde neutro por defecto
 
   const claimEl = document.createElement('div');
   claimEl.className = 'claim';
   claimEl.textContent = claim;
   entry.appendChild(claimEl);
 
-  if (evidence.length) {
+  if (esAfirmacionClinica && evidence.length) {
     for (const source of evidence) {
       const row = document.createElement('div');
       row.className = 'src';
@@ -374,10 +388,15 @@ function addLedgerEntry({ claim, evidence, grounded, triage }) {
       row.querySelector('.id').textContent = source.sourceId;
       entry.appendChild(row);
     }
-  } else {
+  } else if (esAfirmacionClinica) {
     const none = document.createElement('div');
     none.className = 'no-src';
     none.textContent = 'Sin documento de respaldo — el agente no debe afirmar contenido clínico aquí.';
+    entry.appendChild(none);
+  } else {
+    const none = document.createElement('div');
+    none.className = 'no-claim';
+    none.textContent = 'Guion clínico o mensaje fijo — no es una afirmación que necesite respaldo documental.';
     entry.appendChild(none);
   }
 
@@ -435,7 +454,7 @@ async function sendUtterance(utterance) {
 
     addLine('agent', data.agent, { engine: data.engine, latencyMs: data.metrics?.latencyMs });
     speak(data.agent);
-    addLedgerEntry({ claim: data.agent, evidence: data.evidence, grounded: data.grounded, triage: data.triage });
+    addLedgerEntry({ claim: data.agent, evidence: data.evidence, grounded: data.grounded, triage: data.triage, engine: data.engine });
 
     if (data.triage.level === 'red') setStatus('red', 'Escalamiento inmediato requerido');
     else if (data.triage.level === 'amber') setStatus('amber', 'Marcado para revisión');

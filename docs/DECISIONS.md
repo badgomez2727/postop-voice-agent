@@ -618,6 +618,98 @@ su propia aprobación explícita en una sesión con más margen que el último
 día antes del plazo. Candidato natural para "qué cambiarías con dos
 semanas más" (`INFORME.md` §14, pregunta 2 del video).
 
+## 10. Groq vuelve al bucle en vivo — sucesor vigente, no corrección (2026-08-09)
+
+**Origen: comunicación oficial de Source Meridian, recibida por correo el
+2026-08-09, aprobada explícitamente por Darío para actualizar `CLAUDE.md`
+regla 4.** Cita textual del correo:
+
+> "Y sobre los modelos: si un modelo sugerido ya no existe en el proveedor,
+> usa el sucesor vigente de ese mismo proveedor. Por ejemplo, la versión
+> más reciente de Llama disponible en Groq, o la generación actual de
+> Gemini Flash en Google."
+
+La decisión 5 (2026-08-07) había descartado Groq porque Meta descontinuó
+Llama 3.1 70B en su consola. Eso seguía siendo cierto -- lo que cambió es
+la restricción: la lista cerrada ya no exige el modelo exacto nombrado,
+admite su sucesor vigente del mismo proveedor. Esto no reabre la decisión
+5 como si hubiera estado mal tomada -- la restricción de entonces era
+real, y la decisión de sacar Groq del bucle en vivo fue correcta con la
+información de ese momento.
+
+**Modelo vigente, verificado en vivo contra la API de Groq (no supuesto
+por documentación), 2026-08-09:**
+
+```
+GET https://api.groq.com/openai/v1/models
+Llama disponibles hoy: llama-3.1-8b-instant, llama-3.3-70b-versatile,
+                        meta-llama/llama-prompt-guard-2-{22m,86m}
+```
+
+`llama-3.3-70b-versatile` es el sucesor directo de `llama-3.1-70b-versatile`
+(descontinuado) -- mismo proveedor, misma familia "versatile" de 70B,
+generación siguiente. Los dos `prompt-guard-2` son clasificadores de
+seguridad de entrada, no modelos de conversación; `llama-3.1-8b-instant`
+es una clase de tamaño distinta (8B, no 70B), no un sucesor del modelo
+descontinuado. `GROQ_MODEL=llama-3.3-70b-versatile` en `.env.example`.
+
+**Latencia medida contra el servidor real** (`tools/medir-latencia.js`,
+10 llamadas simuladas, mismo protocolo que la decisión 6e con Ollama):
+
+| | Ollama (Llama 3.2 3B, local) | Groq (Llama 3.3 70B, nube) |
+|---|---|---|
+| P50 | 60.8 s | **0.685 s** |
+| P95 | 95.3 s | **0.756 s** |
+| N | 18 (de 20, 1 arranque en frío descartado) | 12 (de 20, ver abajo) |
+
+El umbral que la tarea fijó era P50 < 2s -- 0.685s lo cumple con margen
+amplio, no por poco. La diferencia de dos órdenes de magnitud es
+consistente con lo esperado: Groq corre sobre LPU dedicada en la nube,
+Ollama sobre CPU local compartida con el resto de esta máquina.
+
+**Hallazgo que hay que contar junto con el número bueno, no aparte: el
+nivel gratuito de Groq tiene un límite de 12.000 tokens por minuto (TPM)
+para `llama-3.3-70b-versatile`.** De los 20 intentos de la corrida, 12
+completaron como `engine: 'llm'` (los de la tabla de arriba) y 8
+recibieron `429 Rate limit reached` de la API de Groq y degradaron a
+`scripted-fallback` -- el mismo mecanismo de seguridad que ya existía para
+cualquier fallo del proveedor (`degradeToScripted()`, `src/llm.js`), sin
+código nuevo. La corrida de medición es un caso de estrés a propósito (10
+llamadas seguidas, sin pausa, cada una con 2 turnos que invocan el
+modelo) -- una llamada real de evaluación, con pausas naturales de
+conversación entre turnos y probablemente una sola llamada a la vez, es
+mucho menos probable que choque contra este límite, pero no es
+imposible, y no está medido específicamente. Queda como riesgo conocido
+y declarado, no oculto: si el jurado hace varias llamadas de prueba
+seguidas y rápidas, algunos turnos con pregunta real pueden degradar a
+guion en vez de responder con el modelo -- el sistema no se cae, pero
+la respuesta generativa a esa pregunta específica no llega.
+
+**Decisión: Groq (`llama-3.3-70b-versatile`) vuelve a ser el proveedor
+activo por defecto** (`LLM_PROVIDER=groq` en `.env.example`). Ollama
+(Llama 3.2 3B local) queda documentado como alternativa sin costo ni
+llave, para desarrollo o si `GROQ_API_KEY` no está disponible --
+`LLM_PROVIDER=ollama` en `.env`, sin tocar código, igual que ya funcionaba
+antes de este cambio.
+
+**Consecuencia sobre G2 (instalación ≤15 min), declarada, no resuelta
+del todo:** correr con Groq como proveedor por defecto significa que
+`GROQ_API_KEY` es ahora parte de "credenciales, URLs y accesos incluidos"
+que la compuerta G2 exige que el README resuelva. El README debe traer
+una key de evaluación funcional o instrucciones de obtener una gratis en
+minutos -- pendiente de decidir cuál, ver README y `Pendientes antes de
+entregar` más abajo.
+
+**Consecuencia sobre §9-11 del informe y las métricas del README:** los
+números de latencia P50/P95 del camino `llm` cambian de "rompe tiempo
+real" (60.8s) a "compatible con conversación en vivo" (0.685s) -- esto
+NO invalida el enrutamiento selectivo (`necesitaModelo()`, decisión 6a):
+sigue siendo la decisión correcta que el nivel rojo nunca invoque al
+modelo, con cualquier proveedor, porque la velocidad de una emergencia no
+debe depender de la disponibilidad de una API externa. Lo que cambia es
+que el camino `llm`, cuando sí se invoca, ya no es la parte lenta de la
+conversación.
+
 ## Pendientes antes de entregar
 
 - [x] **Decisión de producto sobre el riesgo a G4 — resuelta: opción (a),
@@ -667,6 +759,17 @@ semanas más" (`INFORME.md` §14, pregunta 2 del video).
 - [ ] Verificar la compuerta de arranque: instalación y ejecución en 15 minutos
       siguiendo el README, en una máquina limpia (sin contar instalar Ollama
       ni descargar el modelo — ver README, "Cómo correrlo").
+- [ ] **Nuevo tras la decisión 10 (Groq por defecto): decidir cómo el
+      README resuelve `GROQ_API_KEY` dentro de los 15 minutos de G2.**
+      Opciones sin decidir todavía: (a) una key de evaluación en el README
+      solo para la sesión del jurado, revocable después de la entrega; (b)
+      instrucciones de crear una key gratis en console.groq.com (rápido,
+      pero agrega un paso fuera de este repositorio dentro del reloj de
+      G2); (c) instruir `LLM_PROVIDER=ollama` como ruta de arranque
+      garantizada si el jurado prefiere no crear una cuenta de Groq
+      durante la evaluación. Probablemente (a) + mencionar (c) como
+      respaldo es lo más seguro contra G2 sin quitarle a Groq su lugar
+      como configuración activa.
 - [x] Diagrama exportado a imagen — `docs/architecture.svg`, 2026-08-09.
       `mermaid-cli` (necesita Chromium headless) no funcionó en este
       entorno de desarrollo tras tres intentos distintos; en vez de seguir

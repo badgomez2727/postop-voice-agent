@@ -49,7 +49,8 @@ empresarial — explícitamente fuera de alcance del reto.
 
 ## 3. Arquitectura
 
-Diagrama completo en `docs/architecture.mmd` (Mermaid). Resumen:
+Diagrama completo en `docs/architecture.svg` (imagen) / `docs/architecture.mmd`
+(fuente Mermaid). Resumen:
 
 ```
 Paciente ──voz (STT)──▶ Consola (public/index.html) ──▶ Servidor (src/server.js)
@@ -61,8 +62,9 @@ Paciente ──voz (STT)──▶ Consola (public/index.html) ──▶ Servidor
                                                         │                src/session.js
                                           ┌─────────────┴─────────────┐
                                           ▼                           ▼
-                                 guion clínico (mayoría          Llama 3.2 3B
-                                 de los turnos, sin modelo)      vía Ollama
+                                 guion clínico (mayoría         Llama 3.3 70B vía Groq
+                                 de los turnos, sin modelo)     (Llama 3.2 3B/Ollama local,
+                                                                 alternativa)
 ```
 
 El enrutamiento entre guion y modelo (`necesitaModelo()`, `src/llm.js`) es una
@@ -70,34 +72,64 @@ pieza central del diseño, no un detalle de implementación — ver §7.
 
 ## 4. Modelo de lenguaje: declaración explícita y por qué
 
-**Modelo usado: Llama 3.2 3B, local, vía Ollama** (`LLM_MODEL=llama3.2:3b`,
-`LLM_PROVIDER=ollama`).
+**Modelo usado: Llama 3.3 70B, vía Groq (nube, nivel gratuito)**
+(`GROQ_MODEL=llama-3.3-70b-versatile`, `LLM_PROVIDER=groq`).
 
-De los cuatro modelos permitidos por el reto, dos quedaron descartados por
-verificación directa contra la API en vivo, no por documentación desactualizada
-(`docs/DECISIONS.md`, decisión 5, 2026-08-07):
+**Esta es la segunda decisión de modelo de esta entrega, no una corrección
+de la primera.** El 2026-08-07 (`docs/DECISIONS.md`, decisión 5), dos de
+los cuatro modelos permitidos quedaron descartados por verificación
+directa contra la API en vivo:
 
-- **Google Gemini 1.5 Flash** — la API responde 404; el modelo fue retirado.
-- **Llama 3.1 70B vía Groq** — Groq descontinuó el modelo; ya no está en su
-  consola ni en su API.
+- **Google Gemini 1.5 Flash** — la API respondía 404; el modelo estaba
+  retirado.
+- **Llama 3.1 70B vía Groq** — Groq había descontinuado el modelo; no
+  estaba ni en su consola ni en su API.
 
-Entre los dos modelos locales que quedan, medido en esta máquina (6 núcleos,
-12GB tras ajustar `.wslconfig` de WSL2) con un prompt corto:
+Con esas dos opciones fuera, la entrega corrió con **Llama 3.2 3B local vía
+Ollama**, elegido por consistencia frente a Phi-3.5 Mini (desviación <1s
+vs. ~5s de rango — la rúbrica pide P95, no solo mediana). Esa decisión fue
+correcta con la información de ese momento: la restricción real era que
+Groq/Llama 3.1 70B ya no existía.
 
-| Modelo | Mediciones (s) | Mediana | Desviación |
+**El 2026-08-09, Source Meridian comunicó oficialmente por correo** que la
+lista cerrada admite el sucesor vigente de un modelo descontinuado, del
+mismo proveedor — cita textual en `docs/DECISIONS.md`, decisión 10.
+Verificado en vivo contra `GET https://api.groq.com/openai/v1/models` (dos
+veces, con resultado idéntico): `llama-3.3-70b-versatile` es el único
+Llama de 70B activo hoy en Groq, sucesor directo del descontinuado
+`llama-3.1-70b-versatile` — no `llama-3.1-8b-instant` (clase de tamaño
+distinta, 8B) ni los modelos `prompt-guard-2` (clasificadores de
+seguridad, no modelos de conversación).
+
+**Latencia medida contra el servidor real, mismo protocolo que la
+decisión 5/6** (`tools/medir-latencia.js`, N=20 intentos, 12 completaron
+como `engine: 'llm'`):
+
+| Proveedor | Modelo | P50 | P95 |
 |---|---|---|---|
-| Llama 3.2 3B | 9.0 / 8.1 / 8.75 | 8.6s | <1s |
-| Phi-3.5 Mini | 4.9 / 9.7 | ~7s | ~5s de rango |
+| Ollama (local) | Llama 3.2 3B | 60.8 s | 95.3 s |
+| Groq (nube) | Llama 3.3 70B | **0.685 s** | **0.756 s** |
 
-**Se eligió Llama 3.2 3B por consistencia, no por mediana.** La rúbrica exige
-reportar P95, no solo P50 — un modelo con el doble de dispersión da un P95
-mucho peor que lo que su mediana sugiere, así su mediana sea menor. Phi-3.5
-queda documentado como alternativa activable sin tocar código
-(`LLM_MODEL=phi3.5` en `.env`), no descartado.
+Dos órdenes de magnitud de diferencia — coherente con lo esperado: LPU
+dedicada en la nube contra CPU local compartida. El camino `llm` pasa de
+romper la sensación de conversación en vivo (§9, §11) a ser compatible con
+ella.
 
-Con `LLM_PROVIDER=none` el sistema corre completo — diálogo guionado,
-recuperación local, triage — sin llaves de API ni costo. Esa es la
-configuración de desarrollo local, nunca la de la entrega evaluada.
+**Costo: nivel gratuito de Groq mientras dure la evaluación.** Riesgo
+declarado: ese nivel limita a 12.000 tokens/minuto para este modelo — 8 de
+20 intentos de la medición recibieron `429` bajo la corrida de estrés (10
+llamadas seguidas, sin pausa) y degradaron a guion de forma segura, el
+mismo mecanismo que ya protegía contra cualquier fallo del proveedor. Ver
+§10 y `docs/DECISIONS.md`, decisión 10, para el detalle completo y la
+consecuencia sobre la compuerta G2 (`GROQ_API_KEY` como parte de las
+credenciales que el README debe resolver en 15 minutos).
+
+Llama 3.2 3B local vía Ollama queda documentado como alternativa activable
+sin llave ni costo (`LLM_PROVIDER=ollama` en `.env`, sin tocar código) —
+más lenta, pero sin dependencia de ninguna cuenta externa ni límite de
+tasa. Con `LLM_PROVIDER=none` el sistema corre completo — diálogo
+guionado, recuperación local, triage — sin llaves de API ni costo; esa es
+la configuración de desarrollo local, nunca la de la entrega evaluada.
 
 ## 5. RAG y conocimiento vivo
 
@@ -288,14 +320,15 @@ una emergencia la velocidad importa tanto como el contenido.
 (no 3), truncado a 400 caracteres; historial limitado a los últimos 3
 intercambios; system prompt comprimido en redacción sin quitar reglas.
 
-Aun con estas mitigaciones, **el camino `llm` sigue sin ser "tiempo real"** —
-ver limitación conocida en §10.
+**Con Groq (decisión 10, §4), el camino `llm` ya es "tiempo real"** — P50
+0.685s. El enrutamiento selectivo se mantiene de todos modos, sin
+cambiarlo: el nivel rojo no debe depender de una API externa para
+responder rápido, sin importar qué tan rápida sea esa API hoy.
 
 ## 10. Métricas obligatorias
 
-Medidas contra el servidor real (`LLM_PROVIDER=ollama`, Llama 3.2 3B), no
-extrapoladas. Metodología completa en `docs/DECISIONS.md` (decisión 6) y
-`docs/latencia-llm-n20.md`.
+Medidas contra el servidor real, no extrapoladas. Metodología completa en
+`docs/DECISIONS.md` (decisiones 6 y 10) y `docs/latencia-llm-n20.md`.
 
 **Latencia — desde que el paciente termina de hablar hasta que el agente
 tiene la respuesta lista:**
@@ -303,26 +336,40 @@ tiene la respuesta lista:**
 | Motor del turno | Cuándo ocurre | Latencia |
 |---|---|---|
 | `scripted` / `scripted-routed` | Guion clínico, caso rojo, o respuesta que no necesita al modelo (mayoría de los turnos) | **2-48 ms** |
-| `llm` | Respuesta ambigua o pregunta fuera de guion fundamentable | **P50 60.8s / P95 95.3s** (N=18, tras descartar 1 arranque en frío de 155.2s) |
+| `llm` — Groq, Llama 3.3 70B (activo) | Respuesta ambigua o pregunta fuera de guion fundamentable | **P50 0.685s / P95 0.756s** (N=12 de 20 — ver nota de límite de tasa) |
+| `llm` — Ollama, Llama 3.2 3B (alternativa local) | Igual, con `LLM_PROVIDER=ollama` | **P50 60.8s / P95 95.3s** (N=18 de 20, tras descartar 1 arranque en frío de 155.2s) |
 
-No se reporta un P50/P95 combinado: exigiría conocer la proporción real de
-turnos que cae en cada motor, y eso depende de cómo hablan los pacientes de
-verdad, no de algo medible hoy con datos sintéticos.
+No se reporta un P50/P95 combinado entre `scripted` y `llm`: exigiría
+conocer la proporción real de turnos que cae en cada motor, y eso depende
+de cómo hablan los pacientes de verdad, no de algo medible hoy con datos
+sintéticos.
+
+**Límite de tasa del nivel gratuito de Groq, declarado:** 12.000
+tokens/minuto para este modelo. De 20 intentos en la corrida de estrés (10
+llamadas seguidas, sin pausa), 12 completaron como `engine: 'llm'` (la
+fila de arriba) y 8 recibieron `429` y degradaron a `scripted-fallback` —
+mismo mecanismo de seguridad que cualquier otro fallo de proveedor, sin
+código nuevo. No medido específicamente para el patrón de uso de una
+sesión de evaluación real (llamadas espaciadas, no en ráfaga).
 
 **Consumo, por turno que invoca el modelo:** ~447-548 tokens de entrada
 (system prompt + 1 pasaje truncado + historial corto), 43-73 tokens de
 salida, 1 invocación al modelo, 1 consulta al RAG (`k=1`) por turno que llega
-al modelo. En la medición de latencia con llamadas completas simuladas, 25%
-de los turnos por llamada invocaron el modelo — cota superior de diseño de
-esa prueba (2 preguntas reales por llamada a propósito), no una tasa derivada
-del dataset oficial.
+al modelo — cifra medida contra Ollama, el conteo no depende del proveedor
+(mismo prompt) así que se mantiene como referencia para Groq. En la
+medición de latencia con llamadas completas simuladas, 25% de los turnos
+por llamada invocaron el modelo — cota superior de diseño de esa prueba
+(2 preguntas reales por llamada a propósito), no una tasa derivada del
+dataset oficial.
 
-**Costo estimado por llamada.** Local, sin costo de API mientras corre en
-esta máquina. Extrapolado a un precio de referencia de nube para un modelo
-pequeño comparable (~$0.05-0.10 por millón de tokens): una llamada de ~7
-turnos con 1-2 invocaciones reales al modelo ronda **~1000-1500 tokens
-totales — bien por debajo de un centavo de dólar**. La cifra que importa no
-es el precio por token, es que el enrutamiento selectivo ya redujo cuántos
+**Costo estimado por llamada.** Nivel gratuito de Groq mientras dure la
+evaluación — sin costo real. Extrapolado a precio de producción de Groq
+para `llama-3.3-70b-versatile`, tomado del campo `pricing` del propio
+endpoint `GET /v1/models` (no de una página de marketing): $0.59/millón de
+tokens de entrada, $0.79/millón de salida. Una llamada de ~7 turnos con
+1-2 invocaciones reales al modelo (~1000-1500 tokens totales, el resto
+guionado) ronda **~$0.001-0.0015 por llamada**. La cifra que importa no es
+el precio por token, es que el enrutamiento selectivo ya redujo cuántos
 turnos pagan ese precio en absoluto.
 
 ## 11. Limitaciones conocidas y decisiones pendientes
@@ -331,17 +378,19 @@ turnos pagan ese precio en absoluto.
 rúbrica de que reportar números que no se sostienen es peor que no
 reportarlos:**
 
-- **El camino `llm` rompe "tiempo real".** P50 60.8s está muy por encima de
-  los ~30s que se habían fijado como límite tolerable para una conversación
-  de voz en vivo, incluso con enrutamiento selectivo activo. El camino
-  guionado/enrutado (2-48ms, ~75% de los turnos en la medición) sí es
-  compatible con voz en tiempo real. Se acepta esta limitación para la
-  entrega: el diseño prioriza que el sistema nunca se caiga ni entregue una
-  respuesta sin fundamento (degrada a guion visible en vez de esperar
-  indefinidamente), a costa de que las respuestas generativas sean lentas
-  cuando ocurren. Alternativas no adoptadas: Groq (Llama 3.1 70B) si vuelve a
-  estar disponible en nivel gratuito; acotar aún más qué turnos llegan al
-  modelo, a costa de menos naturalidad conversacional.
+- **El nivel gratuito de Groq limita a 12.000 tokens/minuto.** Bajo uso en
+  ráfaga (varias llamadas de prueba seguidas y rápidas) algunos turnos con
+  pregunta real pueden recibir `429` y degradar a guion en vez de responder
+  con el modelo — el sistema no se cae, pero esa respuesta específica
+  pierde la generación. No medido bajo el patrón de una sesión de
+  evaluación real, solo bajo un caso de estrés deliberado. `LLM_PROVIDER=
+  ollama` (local, sin límite de tasa externo, pero P50 60.8s) queda
+  documentado como alternativa sin tocar código.
+- **`GROQ_API_KEY` es ahora parte de las credenciales que la compuerta G2
+  exige resolver en 15 minutos.** Decisión de producto sin cerrar (ver
+  `docs/DECISIONS.md`, "Pendientes antes de entregar"): key de evaluación
+  en el README, instrucciones de crear una gratis en el momento, o
+  Ollama como respaldo garantizado.
 - **TF-IDF puro, sin componente semántico** — ver §5.
 - **Reglas de triage no cubren toda formulación posible.** Ejemplos
   documentados y con test de regresión: "dejé de tomar" (no-adherencia,
@@ -457,8 +506,11 @@ más: un modelo como segundo evaluador en paralelo, donde una discrepancia
 entre reglas y modelo se marca para revisión humana — nunca al revés.
 
 Otra candidata igual de defendible: el enrutamiento selectivo del modelo
-(§9) — la decisión que hizo viable G4 dado que el camino `llm` mide 60-95s
-por invocación con Llama 3.2 3B local.
+(§9) — la decisión que separó "cuándo se invoca el modelo" de "qué tan
+rápido responde", y que siguió siendo correcta incluso después de que el
+proveedor activo cambiara de Ollama local (60-95s por invocación) a Groq
+(0.7-0.8s): el nivel rojo nunca depende de esa velocidad, la decide
+`triage.js` sin tocar el modelo en ningún caso.
 
 ---
 

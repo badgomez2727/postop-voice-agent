@@ -39,6 +39,14 @@ verdad — no este archivo ni la memoria de la conversación.
    - Llama 3.2 1B o 3B (local, CPU)
    - Phi-3.5 Mini 3.8B (local, CPU)
 
+   **Excepción documentada (2026-08-09, comunicación oficial de Source
+   Meridian por correo, citada textual en `docs/DECISIONS.md`):** si un
+   modelo de la lista fue descontinuado por su proveedor, se admite **el
+   sucesor vigente de ese mismo proveedor** — mismo proveedor, misma
+   familia, generación actual verificada en el momento de la entrega, no
+   cualquier modelo que ese proveedor ofrezca. No amplía la lista a otros
+   proveedores ni a otras familias de modelo.
+
    Todo lo específico del proveedor vive en `src/llm.js`; no se filtra a otros
    módulos. Con `LLM_PROVIDER=none` el sistema debe seguir corriendo completo
    (diálogo guionado, recuperación local, triage), sin llaves de API ni costo —

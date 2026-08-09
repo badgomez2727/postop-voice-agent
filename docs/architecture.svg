@@ -1,12 +1,14 @@
 <svg viewBox="0 0 1320 1230" xmlns="http://www.w3.org/2000/svg" role="img"
-     aria-label="Diagrama de flujo: el paciente habla por el navegador, el servidor ejecuta triage y RAG sobre cada turno en paralelo, el adaptador de modelo enruta entre el guion clínico fijo (2 a 48 milisegundos) y Llama 3.2 3B vía Ollama (P50 60.8 segundos, P95 95.3 segundos) según si hay una pregunta real con evidencia del RAG, un nivel de triage rojo escala de inmediato a alerta sin pasar nunca por el modelo, y la respuesta vuelve al servidor, al estado de la llamada y a la consola.">
+     aria-label="Diagrama de flujo: el paciente habla por el navegador, el servidor ejecuta triage y RAG sobre cada turno en paralelo, el adaptador de modelo enruta entre el guion clínico fijo (2 a 48 milisegundos) y Llama 3.3 70B vía Groq (P50 0.685 segundos, P95 0.756 segundos; Llama 3.2 3B vía Ollama local queda como alternativa sin límite de tasa externo) según si hay una pregunta real con evidencia del RAG, un nivel de triage rojo escala de inmediato a alerta sin pasar nunca por el modelo, y la respuesta vuelve al servidor, al estado de la llamada y a la consola.">
 <title>Arquitectura y flujo de decisión — agente de voz post-operatorio</title>
 <desc>
 Entregable 02, Tech Sphere Challenge 2026. El triage (src/triage.js) y el RAG
 (src/rag.js) corren en paralelo sobre cada turno. Un nivel rojo escala a
 alerta sin invocar nunca al modelo. Todo lo demás llega al adaptador de
 modelo (src/llm.js, necesitaModelo()), que enruta entre el guion clínico fijo
-(2-48 ms) y Llama 3.2 3B vía Ollama (P50 60.8s / P95 95.3s).
+(2-48 ms) y Llama 3.3 70B vía Groq (P50 0.685s / P95 0.756s, nivel gratuito
+con límite de 12.000 tokens/minuto). Llama 3.2 3B vía Ollama local queda
+como alternativa sin límite de tasa externo, más lenta (P50 60.8s).
 </desc>
 
 <style>
@@ -106,7 +108,7 @@ modelo (src/llm.js, necesitaModelo()), que enruta entre el guion clínico fijo
 <!-- Ollama -> Guion (fallback de forma inválida) -->
 <line class="edge edge-fallback" x1="730" y1="770" x2="512" y2="770" marker-end="url(#arrow)"></line>
 <rect class="edge-label-bg" x="514" y="778" width="216" height="14"></rect>
-<text class="edge-label mono" x="622" y="788" text-anchor="middle">forma inválida → scripted-fallback</text>
+<text class="edge-label mono" x="622" y="788" text-anchor="middle">forma inválida o 429 → guion</text>
 
 <!-- Guion / Ollama -> Turno resuelto -->
 <path class="edge" d="M 400,794 L 560,870" marker-end="url(#arrow)"></path>
@@ -194,12 +196,12 @@ modelo (src/llm.js, necesitaModelo()), que enruta entre el guion clínico fijo
 
 <g class="node">
   <rect x="730" y="730" width="220" height="64" rx="8"></rect>
-  <text class="node-title" x="840" y="754" text-anchor="middle">Llama 3.2 3B</text>
-  <text class="node-sub mono" x="840" y="772" text-anchor="middle">Ollama, local</text>
+  <text class="node-title" x="840" y="754" text-anchor="middle">Llama 3.3 70B</text>
+  <text class="node-sub mono" x="840" y="772" text-anchor="middle">Groq, nube</text>
 </g>
 <g class="tag-slow">
   <rect x="765" y="778" width="150" height="16" rx="8"></rect>
-  <text x="840" y="790" text-anchor="middle">P50 60.8s · P95 95.3s</text>
+  <text x="840" y="790" text-anchor="middle">P50 0.69s · P95 0.76s</text>
 </g>
 
 <g class="node">

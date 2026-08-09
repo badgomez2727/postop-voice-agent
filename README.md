@@ -7,64 +7,52 @@ documento sustenta cada cosa que afirma, y decide cuándo alertar a personal
 capacitado.
 
 > **Estado: en construcción (Tech Sphere Challenge 2026, Source Meridian).**
-> El modelo conectado es **Llama 3.2 3B local vía Ollama** — de los cuatro
-> permitidos por la rúbrica (ver `CLAUDE.md`), Gemini 1.5 Flash y Groq/Llama
-> 3.1 70B quedaron descartados por no estar disponibles hoy, verificado
-> contra la API en vivo (razonamiento y mediciones en `docs/DECISIONS.md`,
+> El modelo conectado es **Llama 3.3 70B vía Groq** (nube, nivel gratuito) —
+> sucesor vigente de Llama 3.1 70B, que Meta/Groq descontinuaron. La lista
+> cerrada de modelos permitidos (`CLAUDE.md`, regla 4) admite esa
+> sustitución por comunicación oficial de Source Meridian (2026-08-09,
+> citada en `docs/DECISIONS.md`, decisión 10). P50 0.685s / P95 0.756s
+> medido contra el servidor real — compatible con conversación de voz en
+> vivo. Llama 3.2 3B local vía Ollama sigue disponible como alternativa sin
+> llave ni costo (P50 60.8s, no apto para tiempo real; `docs/DECISIONS.md`,
 > decisión 5). `knowledge/` ya tiene el corpus real del reto (104 documentos
 > extraídos de `../reto-oficial/dataset/textos/`, ver `tools/ingestar-corpus.js`)
 > más los 4 documentos sintéticos originales de práctica.
 
 ## Cómo correrlo
 
-Requiere Node.js 20 o superior y [Ollama](https://ollama.com) corriendo con
-el modelo ya descargado.
-
-**Antes de cronometrar los 15 minutos de la compuerta G2** (estos pasos no
-cuentan dentro de ese tiempo — instalar Ollama y bajar el modelo es un paso
-de máquina, no de este repositorio):
-
-```bash
-# Ubuntu/Debian: Ollama necesita zstd instalado, si no ya está.
-sudo apt-get install -y zstd
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Descarga el modelo (~2GB). Puede tardar varios minutos según la red.
-ollama pull llama3.2:3b
-```
-
-**Si corres esto dentro de WSL2**, edita `%UserProfile%\.wslconfig` en
-Windows (créalo si no existe) con al menos 8GB de memoria para la VM:
-
-```ini
-[wsl2]
-memory=8GB
-```
-
-y reinicia WSL (`wsl --shutdown` desde PowerShell). Medido en esta máquina:
-con la memoria por defecto de WSL2 (3GB) la latencia de una respuesta se
-dispara de ~8s a ~56s — no es un margen que se pueda ignorar.
-
-**Ahora sí, los 15 minutos:**
+Requiere Node.js 20 o superior y una `GROQ_API_KEY` (gratis, sin tarjeta,
+en [console.groq.com](https://console.groq.com/keys) — crear la cuenta y la
+key toma un par de minutos, dentro de los 15 de la compuerta G2).
 
 ```bash
 npm install
 cp .env.example .env
+# Edita .env: pega tu GROQ_API_KEY. El resto ya viene configurado
+# (LLM_PROVIDER=groq, GROQ_MODEL=llama-3.3-70b-versatile).
 npm start
 ```
 
 Abre `http://localhost:3000` en Chrome o Edge (el reconocimiento de voz del
-navegador no está disponible en todos). El `.env.example` ya trae
-`LLM_PROVIDER=ollama` y `LLM_MODEL=llama3.2:3b` por defecto — si Ollama no
-está corriendo o el modelo no se descargó, el sistema no se cae: degrada
+navegador no está disponible en todos). Si `GROQ_API_KEY` no está
+configurada o Groq no responde, el sistema no se cae: degrada
 automáticamente a diálogo guionado y avisa con una advertencia visible en la
-consola del servidor (no solo en el registro de la llamada).
+consola del servidor (no solo en el registro de la llamada). El nivel
+gratuito de Groq limita a 12.000 tokens/minuto — varias llamadas de prueba
+seguidas y rápidas pueden chocar contra ese límite; degrada igual, sin
+romper la llamada (`docs/DECISIONS.md`, decisión 10).
 
-Para desarrollo sin ni siquiera Ollama corriendo, y sin costo, usa
-`LLM_PROVIDER=none` en `.env`: corre completo con recuperación local y
-diálogo guionado. Para usar Phi-3.5 Mini en vez de Llama 3.2 3B (alternativa
-medida en `docs/DECISIONS.md`, decisión 5): `ollama pull phi3.5` y
-`LLM_MODEL=phi3.5` en `.env`, sin tocar código.
+**Sin cuenta de Groq, o para desarrollo 100% local:** `LLM_PROVIDER=ollama`
+y `LLM_MODEL=llama3.2:3b` en `.env` (comentado, listo para descomentar) —
+requiere [Ollama](https://ollama.com) instalado y el modelo descargado
+(`ollama pull llama3.2:3b`, ~2GB, fuera de los 15 minutos de G2). En WSL2,
+editar `%UserProfile%\.wslconfig` con al menos 8GB de memoria para la VM
+(`wsl --shutdown` para aplicar) — con la memoria por defecto de WSL2 (3GB)
+la latencia de Ollama se dispara de ~8s a ~56s. Para Phi-3.5 Mini en vez de
+Llama 3.2 3B: `ollama pull phi3.5` y `LLM_MODEL=phi3.5`. Para correr sin
+ni siquiera Ollama, `LLM_PROVIDER=none`: recuperación local y diálogo
+guionado, sin costo. Todas estas alternativas están documentadas y
+comentadas directamente en `.env.example`.
 
 ## Cómo se prueba en dos minutos
 
@@ -135,9 +123,8 @@ El razonamiento completo, con alternativas descartadas y riesgos, está en
 
 ## Métricas
 
-Medidas contra el servidor real (`LLM_PROVIDER=ollama`, Llama 3.2 3B),
-no extrapoladas. Metodología y muestras completas en `docs/DECISIONS.md`,
-decisión 6.
+Medidas contra el servidor real, no extrapoladas. Metodología y muestras
+completas en `docs/DECISIONS.md`, decisiones 6 (Ollama) y 10 (Groq).
 
 **Latencia — desde que el paciente termina de hablar hasta que el agente
 tiene la respuesta lista** (no incluye reconocimiento de voz, que ocurre
@@ -146,83 +133,82 @@ antes de llegar al servidor, ni síntesis, que ocurre después):
 | Motor del turno | Cuándo ocurre | Latencia |
 |---|---|---|
 | `scripted` / `scripted-routed` | Guion clínico fijo, caso rojo, o respuesta que no necesita al modelo (la mayoría de los turnos — ver decisión 6a) | **2-48 ms** |
-| `llm` | Respuesta ambigua o pregunta fuera de guion que el RAG puede fundamentar | **P50 60.8s / P95 95.3s** (N=18, `format: json_object` forzado — ver decisión 6d) |
+| `llm` — Groq, Llama 3.3 70B (proveedor activo) | Respuesta ambigua o pregunta fuera de guion que el RAG puede fundamentar | **P50 0.685s / P95 0.756s** (N=12 de 20, ver nota de límite de tasa abajo — decisión 10) |
+| `llm` — Ollama, Llama 3.2 3B (alternativa local) | Igual que arriba, con `LLM_PROVIDER=ollama` | **P50 60.8s / P95 95.3s** (N=18 de 20 — decisión 6e) |
 
-**Esta cifra de `llm` reemplaza la medición anterior (N=7, P50 15.3s / P95
-37.6s) y queda muy por encima.** Remedida con N=20 invocaciones reales
-contra Ollama (`tools/medir-latencia.js`), simulando 10 llamadas completas
-de 8 turnos cada una. Metodología:
+**El proveedor cambió de Ollama a Groq el 2026-08-09** (decisión 10, tras
+una comunicación oficial de Source Meridian que admite el sucesor vigente
+de un modelo descontinuado): el camino `llm` pasó de romper la sensación de
+conversación en vivo a ser compatible con ella, sin cambiar el enrutamiento
+selectivo que decide cuándo se invoca.
 
-- Se descarta del cálculo la primera invocación de la corrida completa
-  (**155.2s** — arranque en frío: Ollama carga el modelo 3B en memoria) y
-  se reporta aparte, no mezclada con el resto.
-- De las 19 invocaciones restantes, **18 completaron con `engine: 'llm'`**
-  (rango 40.8s-95.3s) y **1 falló la validación de forma** (decisión 6d)
-  después de generar durante **155.6s** — el modelo devolvió JSON sin el
-  campo `groundedInContext`, `formaValida()` lo rechazó correctamente y
-  degradó al guion (`engine: 'scripted-fallback'`). El sistema se comportó
-  como está diseñado — nada malformado llegó al paciente — pero el costo en
-  tiempo de un fallo (155.6s) es peor que el de cualquier éxito. 1 de 20
-  intentos (5%) en esta muestra.
-- P50/P95 arriba se calculan solo sobre las 18 invocaciones exitosas, sin
-  el arranque en frío. Con el fallo incluido como "peor caso latente", el
-  máximo real observado en la corrida es 155.6s, no 95.3s.
+**Riesgo declarado, no oculto: el nivel gratuito de Groq limita a 12.000
+tokens/minuto.** En la corrida de medición (10 llamadas seguidas, sin
+pausa, `tools/medir-latencia.js`), 12 de 20 intentos completaron como
+`engine: 'llm'` (esos son los que arman la tabla de arriba) y 8 recibieron
+`429 Rate limit reached` de la API y degradaron a `scripted-fallback` — el
+mismo mecanismo de seguridad que ya existía para cualquier fallo del
+proveedor, sin código nuevo. Una llamada real de evaluación, con pausas de
+conversación entre turnos, es menos probable que choque contra ese límite,
+pero no está garantizado. El sistema nunca se cae por esto: la respuesta a
+ese turno específico degrada a guion en vez de generarse.
 
-No se reporta un P50/P95 único combinando ambos motores: eso exigiría saber
-qué proporción real de turnos de una llamada cae en cada uno, y eso depende
-de cómo hablan los pacientes de verdad, no de algo medible hoy con datos
-sintéticos. Reportar un número combinado inventando esa proporción sería
-peor que reportar los dos por separado.
+No se reporta un P50/P95 único combinando los motores `scripted` y `llm`:
+exigiría saber qué proporción real de turnos de una llamada cae en cada
+uno, y eso depende de cómo hablan los pacientes de verdad, no de algo
+medible hoy con datos sintéticos.
 
 **Turnos por llamada que invocan el modelo (naturalidad conversacional).**
 En las 10 llamadas simuladas de esta medición, 2 de cada 8 turnos (**25%**)
 intentaron invocar al modelo — por diseño del script de medición, no porque
 así hable un paciente real: cada llamada simulada trae exactamente 2
-preguntas reales fuera de guion a propósito, para juntar N≥20 invocaciones
-en una corrida manejable. El dataset oficial (`data/dataset_final.json`)
-no tiene suficientes preguntas espontáneas del paciente hacia el agente
-como para derivar de ahí una tasa realista — el 25% de esta prueba es una
-cota práctica de la medición, no una predicción de producción.
+preguntas reales fuera de guion a propósito. El dataset oficial
+(`data/dataset_final.json`) no tiene suficientes preguntas espontáneas del
+paciente hacia el agente como para derivar de ahí una tasa realista — el
+25% de esta prueba es una cota práctica de la medición, no una predicción
+de producción.
 
-**Consumo, por turno que sí invoca el modelo** (N=7, medición anterior —
-no reproducida en la remedición de latencia de arriba, que no capturó
-tokens): tokens de entrada 447 (fijo — mismo prompt de prueba en cada
-intento), tokens de salida 50-73, 1 invocación al modelo, 1 consulta al RAG
-(`k=1` desde decisión 6b). Muestras sueltas de la remedición (N=20,
-preguntas reales variadas, no un solo prompt fijo) están en el mismo rango:
-508-548 tokens de entrada, 46-53 de salida — consistente con la cifra de
-arriba, no la reemplaza formalmente.
+**Consumo, por turno que sí invoca el modelo** (N=7, medición contra
+Ollama — no reproducida token a token contra Groq en esta sesión, que no
+capturó tokens en la corrida de latencia): tokens de entrada 447-548,
+tokens de salida 43-73, 1 invocación al modelo, 1 consulta al RAG (`k=1`
+desde decisión 6b) por turno que llega al modelo. El conteo de tokens no
+depende del proveedor — mismo prompt, mismo contexto recortado — así que
+el rango se mantiene como referencia para Groq también, sujeto a
+confirmarlo con una medición dedicada.
 
-**Costo estimado por llamada.** Local, sin costo de API mientras corre en
-esta máquina. Extrapolado a precio de nube de un modelo comparable (Llama
-3.2 3B no está publicado en las calculadoras de precio usuales; usando como
-referencia un modelo pequeño típico a ~$0.05-0.10 por millón de tokens de
-entrada/salida): una llamada de ~7 turnos, con 1-2 invocaciones reales al
-modelo (el resto guionado, ver 6a), ronda los **~1000-1500 tokens totales
-por llamada — bien por debajo de un centavo de dólar** al precio de
-referencia. La cifra que sí importa para la compuerta de costo no es el
-precio por token, es que el enrutamiento selectivo ya redujo cuántos turnos
-pagan ese precio en absoluto.
+**Costo estimado por llamada, con Groq activo.** Nivel gratuito de Groq:
+sin costo mientras la entrega corra dentro de ese nivel — el número que
+sigue es la extrapolación a producción que pide la rúbrica, no un cobro
+real de esta entrega. Precio de producción para `llama-3.3-70b-versatile`
+tomado del propio campo `pricing` que devuelve
+`GET https://api.groq.com/openai/v1/models` (no de una página de
+marketing): **$0.59/millón de tokens de entrada, $0.79/millón de
+salida**, verificado en vivo el 2026-08-09. Una llamada de ~7 turnos con
+1-2 invocaciones reales al modelo (~1000-1500 tokens totales por llamada,
+el resto guionado — ver decisión 6a) ronda **~$0.001-0.0015 por llamada** — sigue
+bien por debajo de un centavo de dólar. La cifra que importa para la
+compuerta de costo no es el precio por token, es que el enrutamiento
+selectivo ya redujo cuántos turnos pagan ese precio en absoluto.
 
 ## Pendiente para la entrega del reto
 
-- **Decisión de producto pendiente, no solo técnica: el camino `llm` mide
-  P50 60.8s / P95 95.3s (N=18) contra el servidor real — el doble del P95
-  anterior (N=7), y por encima del umbral de 30s que se había fijado como
-  aceptable para no romper la sensación de conversación en vivo.** El
-  camino guionado (2-48ms) sí es compatible con voz en tiempo real; el que
-  invoca al modelo no lo es con Llama 3.2 3B local, ni siquiera con el
-  enrutamiento selectivo (decisión 6a) reduciendo cuántos turnos lo pagan
-  (~25% en la medición, límite superior de la prueba, no del dataset real).
-  Un fallo de forma en la muestra (decisión 6d) tardó 155.6s en degradar al
-  guion — peor que cualquier éxito. Opciones a decidir antes de la entrega,
-  no a resolver en código sin más contexto: (a) aceptar que el camino `llm`
-  rompe "tiempo real" y comunicarlo explícitamente como limitación conocida
-  en el informe, (b) medir Groq (Llama 3.1 70B en nube) si vuelve a estar
-  disponible, con la advertencia ya documentada de que puede descalificar
-  si deja de estar en el nivel gratuito, o (c) acotar aún más qué turnos
-  llegan al modelo, aceptando que menos preguntas del paciente reciben
-  respuesta generativa.
+- **Resuelto (2026-08-09, decisión 10): el camino `llm` ya no rompe "tiempo
+  real".** Con Groq (Llama 3.3 70B, sucesor vigente de Llama 3.1 70B tras
+  comunicación oficial de Source Meridian) el camino `llm` mide P50
+  0.685s / P95 0.756s — dos órdenes de magnitud por debajo de los 60.8s/
+  95.3s que medía Ollama local, y muy por debajo del umbral de 30s que se
+  había fijado como aceptable. Queda un riesgo declarado, no una decisión
+  pendiente: el nivel gratuito de Groq limita a 12.000 tokens/minuto, así
+  que varias llamadas de prueba seguidas y rápidas pueden degradar algunos
+  turnos a guion por `429`. El sistema nunca se cae por esto — ver
+  "Métricas" arriba y `docs/DECISIONS.md`, decisión 10.
+- **Nuevo pendiente que reemplaza al anterior: decidir cómo el README
+  resuelve `GROQ_API_KEY` dentro de los 15 minutos de la compuerta G2** —
+  una key de evaluación para la sesión del jurado, instrucciones de crear
+  una gratis en el momento, o recomendar `LLM_PROVIDER=ollama` como
+  respaldo garantizado sin cuenta externa. Ver `docs/DECISIONS.md`,
+  "Pendientes antes de entregar".
 - Recuperación híbrida (embeddings + TF-IDF): con el corpus real ya cargado,
   hay evidencia medida (no solo intuida) de que TF-IDF puro no siempre trae
   el documento correcto — ver `docs/recuperacion-despues.md`.
