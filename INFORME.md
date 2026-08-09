@@ -161,6 +161,14 @@ servidor), no afirmaciones clínicas que necesiten respaldo del RAG. Solo se
 intenta cuando el turno no trae ningún hallazgo de triage — la prioridad
 clínica nunca cede ante la cortesía.
 
+**Silencio del paciente** (2026-08-08): si el reconocimiento de voz no
+detecta nada, el agente ahora lo dice en voz alta ("¿Sigue ahí? No alcancé
+a escucharlo, ¿me repite eso?") en vez de quedarse callado — antes solo
+había un aviso técnico invisible para el paciente. `docs/rubrica-evaluacion.md`
+pregunta explícitamente qué hace la solución durante los silencios; resuelto
+enteramente en el cliente (`public/index.html`), sin tocar `triage.js` ni
+`llm.js`.
+
 ## 7. Lógica de decisión y escalamiento
 
 **El escalamiento vive en `src/triage.js` como reglas deterministas sobre el
@@ -203,6 +211,21 @@ la palabra "aire". Corregido y verificado (`npm test`, 79/79 en triage, más
 prueba manual contra el servidor real). No cambió el número oficial de arriba
 porque el dataset oficial no usa esa formulación exacta — el hallazgo vino de
 probar el sistema con frases que un paciente diría, no del dataset.
+
+**Puntaje numérico de dolor, con contexto (2026-08-08).** `assess()` nunca
+interpretaba un número suelto como puntaje de dolor — si el paciente
+respondía a "en una escala de 0 a 10, ¿qué tan fuerte es?" con "un 8" o
+"le doy un 9", ningún hallazgo disparaba, sin importar qué tan alto fuera el
+número. `assess(utterance, context)` ahora recibe opcionalmente
+`context.lastAskedTopic` (`server.js` lo llena con el último tema que el
+guion preguntó): un número ≥7 en esa situación específica dispara
+`AMBER-PAIN-SCORE` (umbral tomado de `knowledge/03-manejo-del-dolor-y-medicacion.md`);
+un número fuera de la escala 0-10 ("20000", "11") produce
+`needsClarification: true` en vez de ser ignorado silenciosamente. Acotado
+con `^...$` para no leer cualquier número suelto en cualquier frase como
+puntaje — solo cuando la respuesta ES el número. Verificado: `npm test`
+(86/86 en triage) y manualmente dentro de una llamada completa contra el
+servidor real.
 
 ## 8. Seguridad: resistencia a inyección de prompt
 
