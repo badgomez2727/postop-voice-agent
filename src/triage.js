@@ -125,6 +125,14 @@ function confusionEsTrivial(match) {
   return OBJETO_TRIVIAL_CONFUSION.test(resto);
 }
 
+// Mismos intensificadores que ya usa RED-BLEEDING más abajo -- comparten
+// literal a propósito, no por casualidad: si el sangrado ya califica como
+// rojo, el patrón amber de AMBER-WOUND no debe disparar también y duplicar
+// el hallazgo en el registro (misma lógica que ya explica el comentario de
+// RED-ACCUMULATION: "dos motivos para lo mismo" confunde el registro).
+const SANGRADO_INTENSIFICADO =
+  /sangr\w*\s+(mucho|abundante|much[íi]simo)|no\s+(para|deja)\s+de\s+sangrar|empap\w+\s+\w*\s*(vend\w+|gasa|apósito|aposito)|chorro\s+de\s+sangre/i;
+
 const RULES = [
   {
     id: 'RED-BLEEDING',
@@ -283,6 +291,22 @@ const RULES = [
       {
         regex: /liquido\w*[^.;]{0,25}?(amarill\w*|verdos\w*|purulent\w*)/i,
         validate: match => /\bsal\w*\b/i.test(match.input)
+      },
+      // "Estoy sangrando", a secas, sin "mucho"/"no para"/"chorro"/"empapado"
+      // -- no disparaba NINGÚN hallazgo (level: 'none'), verificado contra
+      // el server real el 2026-08-09. knowledge/01-signos-de-alarma-generales.md
+      // solo pone en la lista de alerta inmediata el sangrado que "empapa el
+      // apósito" o "no se detiene con presión" -- un sangrado reportado sin
+      // esos detalles no llega literalmente a ese umbral, pero silenciarlo
+      // del todo (level: none, igual que si no hubiera dicho nada) es el
+      // riesgo que la regla 6 de CLAUDE.md pide evitar. Amber, no rojo: deja
+      // que RED-BLEEDING (arriba) siga siendo la única puerta a rojo cuando
+      // el paciente sí da un dato que lo amerita.
+      // validate excluye los casos ya intensificados para no duplicar el
+      // hallazgo junto con RED-BLEEDING en el mismo turno.
+      {
+        regex: /sangr\w*/i,
+        validate: match => !SANGRADO_INTENSIFICADO.test(match.input)
       }
     ]
   },

@@ -127,6 +127,33 @@ export const cases = [
     utterance: 'Creo que se abrió la herida cuando me levanté de la cama.',
     expect: { level: 'amber', findingIds: ['AMBER-WOUND'] }
   },
+  {
+    // Encontrado probando el servidor real el 2026-08-09: "estoy sangrando"
+    // a secas, repetido, cerraba la llamada en 'none' -- RED-BLEEDING solo
+    // reconocía sangrado con intensificador. Ver SANGRADO_INTENSIFICADO en
+    // triage.js.
+    id: 'amber-wound-bleeding-bare-01',
+    category: 'amber/herida',
+    utterance: 'Estoy sangrando.',
+    expect: { level: 'amber', findingIds: ['AMBER-WOUND'] }
+  },
+  {
+    // Negación genérica (mecanismo ya existente, no selfNegating): un
+    // sangrado negado no debe disparar nada, igual que cualquier otro
+    // hallazgo negado.
+    id: 'amber-wound-bleeding-bare-02-negado',
+    category: 'amber/herida',
+    utterance: 'No he sangrado nada, gracias a Dios.',
+    expect: { level: 'none' }
+  },
+  {
+    // Sangrado intensificado sigue siendo SOLO rojo -- el patrón amber no
+    // debe duplicar el hallazgo cuando RED-BLEEDING ya disparó.
+    id: 'amber-wound-bleeding-bare-03-no-duplica-rojo',
+    category: 'red/sangrado',
+    utterance: 'Estoy sangrando mucho, no sé qué hacer.',
+    expect: { level: 'red', findingIds: ['RED-BLEEDING'] }
+  },
 
   // ---- AMBER: dolor -----------------------------------------------------
   {
