@@ -821,16 +821,24 @@ confirmado que NO dispara.
       máquina realmente nueva, pero confirma que la secuencia documentada
       en el README funciona tal como está escrita, sin pasos faltantes ni
       ambiguos.
-- [x] **`GROQ_API_KEY` dentro de los 15 minutos de G2 — resuelto: opción
-      (a).** Key de evaluación dedicada (no la key personal/de desarrollo
-      de Darío -- se pidió una nueva a propósito para no romper su entorno
-      local al revocarla) puesta directamente en el README, marcada como
-      temporal. **Pendiente de acción humana, no técnica: revocarla en
-      console.groq.com apenas termine la sesión de evaluación del
-      jurado** -- mientras siga ahí, cualquiera con el repo público puede
-      usarla. La opción (c) (Ollama como respaldo sin cuenta externa)
-      sigue documentada en el README para quien prefiera no depender de
-      ninguna key.
+- [x] **`GROQ_API_KEY` dentro de los 15 minutos de G2 — resuelto: opciones
+      (b) + (c), no (a).** Se intentó (a) primero -- una key de evaluación
+      dedicada (no la personal de Darío), puesta directamente en el
+      README. **GitHub push protection bloqueó el push**: detecta
+      cualquier API key real en un commit y lo rechaza por diseño, no por
+      configuración de este repo. Hay una vía de bypass (autorizar el
+      secreto vía la URL que da GitHub), pero incluso revocando la key
+      después, el valor queda visible en el historial de git para
+      siempre -- un repositorio público no es el lugar para una
+      credencial, ni marcada "temporal". Se abandonó (a) en vez de forzar
+      el bypass. Resuelto con lo que ya estaba documentado: (b)
+      instrucciones de crear una key gratis en console.groq.com (menos de
+      2 minutos, dentro de los 15 de G2) como camino principal, y (c)
+      `LLM_PROVIDER=ollama` sin cuenta externa como respaldo, para quien
+      prefiera no crear ninguna key durante la evaluación. La key de
+      evaluación que sí se generó y se verificó funcionando (ver el punto
+      de G2 arriba) no quedó en ningún archivo del repo -- solo se usó
+      para probar el flujo antes de decidir no commitearla.
 - [x] Diagrama exportado a imagen — `docs/architecture.svg`, 2026-08-09.
       `mermaid-cli` (necesita Chromium headless) no funcionó en este
       entorno de desarrollo tras tres intentos distintos; en vez de seguir
