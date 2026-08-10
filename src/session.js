@@ -31,19 +31,37 @@ export function getSession(id) {
   return session;
 }
 
+// Solo engine:'llm' hace una afirmación clínica que de verdad usa la
+// evidencia recuperada -- el guion fijo (scripted/scripted-routed/
+// scripted-fallback), el mensaje de escalamiento y el de RED-PSYCH nunca
+// citan nada, aunque retrieve() haya encontrado algo para lo que dijo el
+// paciente ese turno (server.js llama retrieve() en cada turno, sin
+// importar el motor). Antes de este cambio, `evidence` se guardaba tal
+// cual sin importar el motor, así que el resumen estructurado -- el JSON
+// que de verdad se entrega, no solo la consola -- podía citar un
+// documento irrelevante como fuente de un turno guionado. Encontrado en
+// una llamada real: "estoy sangrando mucho y no para" (turno de
+// escalamiento, sin RAG de por medio) hizo que "breast-cancer--documento.md#64"
+// apareciera en traceability.citedSources -- nunca se usó para nada, solo
+// coincidió por casualidad con retrieve(utterance). Mismo principio que
+// ya se aplicó en public/index.html (addLedgerEntry), ahora en la fuente
+// de datos real, no solo en cómo se pinta.
 export function recordTurn(session, { utterance, reply, assessment, evidence, engine, metrics }) {
+  const esAfirmacionClinica = engine === 'llm';
   session.turns.push({
     at: new Date().toISOString(),
     patient: utterance,
     agent: reply.reply,
     engine,
     triage: assessment,
-    evidence: evidence.map(({ sourceId, file, position, relevance }) => ({
-      sourceId,
-      file,
-      position,
-      relevance
-    })),
+    evidence: esAfirmacionClinica
+      ? evidence.map(({ sourceId, file, position, relevance }) => ({
+          sourceId,
+          file,
+          position,
+          relevance
+        }))
+      : [],
     grounded: Boolean(reply.groundedInContext),
     metrics
   });
@@ -70,8 +88,12 @@ export function summarize(session) {
     session.turns.flatMap(turn => turn.evidence.map(e => e.sourceId))
   )];
 
+  // Solo cuenta como "sin respaldo" un turno que SÍ intentó una afirmación
+  // clínica (engine: 'llm') y no logró fundamentarla -- no cualquier turno
+  // guionado, que nunca intenta fundamentar nada porque no afirma nada
+  // clínico (ver el comentario en recordTurn(), src/session.js).
   const ungroundedTurns = session.turns
-    .filter(turn => !turn.grounded)
+    .filter(turn => turn.engine === 'llm' && !turn.grounded)
     .map(turn => turn.at);
 
   return {
