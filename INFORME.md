@@ -518,7 +518,9 @@ normales de Markdown, GitHub las renderiza directo).
 ## 14. Preparación para las preguntas de cierre del video
 
 *(Notas de preparación — las respuestas reales se dan frente a cámara, sin
-guion leído, según exige la rúbrica.)*
+guion leído, según exige la rúbrica.)* Guion completo de grabación,
+paso a paso, con la secuencia de demo y estas mismas notas ampliadas:
+`docs/guion-video.md`.
 
 **Pregunta 1 — presentar el problema y el valor diferencial.** El seguimiento
 post-operatorio hoy depende de personal humano: costoso, no escala, sujeto a
