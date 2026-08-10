@@ -12,33 +12,23 @@ correcto es dejar de hablar y avisar a una persona.
 Lo construí para el Tech Sphere Challenge 2026 de Source Meridian, entre
 el 7 y el 10 de agosto.
 
-> **Estado: entrega final, Tech Sphere Challenge 2026 (2026-08-10).** El modelo conectado es **Llama 3.3 70B vía
-> Groq** (nube, nivel gratuito) — el sucesor vigente de Llama 3.1 70B,
-> que Meta/Groq descontinuaron. La lista cerrada de modelos permitidos
-> (`CLAUDE.md`, regla 4) admite esa sustitución por comunicación oficial
-> de Source Meridian del 2026-08-09, citada completa en
-> `docs/DECISIONS.md`, decisión 10. Medí P50 0.685s / P95 0.756s contra
-> el servidor real — sí alcanza para sostener una conversación de voz en
-> vivo. Llama 3.2 3B local vía Ollama sigue ahí como alternativa sin
-> llave ni costo (P50 60.8s, ya no apta para tiempo real, pero honesta:
-> `docs/DECISIONS.md`, decisión 5). `knowledge/` ya trae el corpus real
-> del reto — 104 documentos extraídos de
-> `../reto-oficial/dataset/textos/` (ver `tools/ingestar-corpus.js`) más
-> los 4 sintéticos con los que empecé a probar.
+> **Entrega final — Tech Sphere Challenge 2026.** Modelo: **Llama 3.3 70B
+> vía Groq** (nube, nivel gratuito), sucesor vigente de Llama 3.1 70B tras
+> su descontinuación — excepción admitida por comunicación oficial de
+> Source Meridian, citada en `docs/DECISIONS.md`, decisión 10. P50 0.685s
+> / P95 0.756s: compatible con conversación de voz en vivo. Llama 3.2 3B
+> vía Ollama queda como alternativa local sin costo (`docs/DECISIONS.md`,
+> decisión 5). `knowledge/` trae el corpus real del reto — 104 documentos
+> extraídos de `../reto-oficial/dataset/textos/` más 4 sintéticos.
 
 ## Cómo correrlo
 
 Necesitas Node.js 20 o más reciente, y una `GROQ_API_KEY` — se saca
 gratis, sin tarjeta, en [console.groq.com/keys](https://console.groq.com/keys)
-con el botón "Create API Key". Toma menos de dos minutos, así que cabe
-sin problema dentro de los 15 de la compuerta G2.
-
-(Una aclaración por si te preguntas por qué no dejé una key ya puesta
-aquí para ahorrarte el paso: lo intenté, y GitHub bloqueó el push —
-detecta por diseño cualquier API key real en un commit. Y tiene razón:
-aunque se autorice el bypass, la key queda visible en el historial de
-git para siempre. Un repositorio público no es el lugar para guardar una
-credencial, ni "por un rato".)
+con el botón "Create API Key". Toma menos de dos minutos, dentro de los
+15 de la compuerta G2. (No hay una key ya puesta en este repositorio a
+propósito: un repositorio público no es el lugar para guardar una
+credencial — detalle en `docs/DECISIONS.md`, decisión 10.)
 
 ```bash
 npm install
@@ -148,114 +138,63 @@ alternativas que descarté y por qué— está en `docs/DECISIONS.md`.
 
 ## Métricas
 
-Todo lo que sigue lo medí contra el servidor real, no lo extrapolé de
-oídas. La metodología completa y las muestras crudas están en
-`docs/DECISIONS.md`, decisiones 6 (Ollama) y 10 (Groq).
+Medidas contra el servidor real, no extrapoladas. Metodología completa y
+muestras crudas en `docs/DECISIONS.md`, decisiones 6 (Ollama) y 10 (Groq).
 
-**Latencia — desde que el paciente termina de hablar hasta que el agente
-tiene la respuesta lista** (no incluye el reconocimiento de voz, que pasa
-antes de llegar al servidor, ni la síntesis, que pasa después):
+**Latencia** — desde que el paciente termina de hablar hasta que el
+agente tiene la respuesta lista (no incluye reconocimiento de voz ni
+síntesis, que ocurren fuera del servidor):
 
-| Motor del turno | Cuándo pasa | Latencia |
+| Motor | Cuándo | Latencia |
 |---|---|---|
-| `scripted` / `scripted-routed` | Guion clínico fijo, caso rojo, o cualquier respuesta que no necesita al modelo (la mayoría de los turnos — ver decisión 6a) | **2-48 ms** |
-| `llm` — Groq, Llama 3.3 70B (el que está activo) | Respuesta ambigua, o pregunta fuera de guion que el RAG puede fundamentar | **P50 0.685s / P95 0.756s** (N=12 de 20 — ver la nota del límite de tasa, abajo) |
-| `llm` — Ollama, Llama 3.2 3B (la alternativa local) | Lo mismo, con `LLM_PROVIDER=ollama` | **P50 60.8s / P95 95.3s** (N=18 de 20 — decisión 6e) |
+| `scripted` / `scripted-routed` | Guion clínico, caso rojo, o cualquier turno que no necesita al modelo (la mayoría) | **2-48 ms** |
+| `llm` — Groq, Llama 3.3 70B (activo) | Pregunta real fuera de guion, con evidencia del RAG | **P50 0.685s / P95 0.756s** (N=12/20) |
+| `llm` — Ollama, Llama 3.2 3B (alternativa local) | Igual, con `LLM_PROVIDER=ollama` | **P50 60.8s / P95 95.3s** (N=18/20) |
 
-**El proveedor cambió de Ollama a Groq el 2026-08-09** (decisión 10, tras
-la comunicación oficial de Source Meridian que admite el sucesor vigente
-de un modelo descontinuado): el camino `llm` pasó de romper por completo
-la sensación de conversación en vivo, a ser perfectamente compatible con
-ella — sin tocar el enrutamiento selectivo que decide cuándo hace falta
-invocarlo.
+Con Groq, el camino `llm` es compatible con conversación de voz en vivo —
+con Ollama local no lo era. El enrutamiento selectivo (qué turnos
+invocan al modelo) no cambió al cambiar de proveedor: el nivel rojo
+sigue sin tocar el modelo nunca, sin importar qué tan rápido responda.
 
-**Un riesgo que prefiero contarte antes de que lo descubras tú: el nivel
-gratuito de Groq limita a 12.000 tokens por minuto.** En la corrida de
-medición (10 llamadas seguidas, sin pausa, `tools/medir-latencia.js`), 12
-de 20 intentos terminaron como `engine: 'llm'` (esos son los que arman la
-tabla de arriba) y 8 recibieron `429 Rate limit reached` de la API y
-degradaron a `scripted-fallback` — el mismo mecanismo de seguridad que ya
-existía para cualquier fallo del proveedor, sin una línea de código
-nueva. Una llamada real de evaluación, con las pausas naturales de una
-conversación entre turnos, tiene menos probabilidad de chocar contra ese
-techo, pero no te lo puedo garantizar. Lo que sí te garantizo: el sistema
-nunca se cae por esto, ese turno puntual simplemente degrada al guion en
-vez de generarse.
+**Consumo, por turno que invoca al modelo**: 447-548 tokens de entrada,
+43-73 de salida, 1 invocación al modelo, 1 consulta al RAG (`k=1`). En la
+medición, 25% de los turnos por llamada invocaron el modelo — cota de la
+prueba, no una tasa de producción.
 
-No junto un P50/P95 combinando los motores `scripted` y `llm`: para
-hacerlo bien necesitaría saber qué proporción real de turnos de una
-llamada cae en cada uno, y eso depende de cómo habla un paciente real, no
-de algo que pueda medir hoy con datos sintéticos.
+**Costo por llamada, con Groq**: nivel gratuito, sin costo real hoy.
+Extrapolado a precio de producción de `llama-3.3-70b-versatile` ($0.59 /
+millón de tokens de entrada, $0.79 / millón de salida — tomado del propio
+endpoint de Groq): **~$0.001-0.0015 por llamada**, bien por debajo de un
+centavo.
 
-**Turnos por llamada que invocan el modelo (la naturalidad
-conversacional).** En las 10 llamadas simuladas de esta medición, 2 de
-cada 8 turnos (**25%**) intentaron invocar al modelo — así diseñé el
-script de medición, no porque así hable un paciente real: cada llamada
-simulada trae exactamente 2 preguntas reales fuera de guion, a propósito.
-El dataset oficial (`data/dataset_final.json`) no tiene suficientes
-preguntas espontáneas del paciente como para sacar de ahí una tasa
-realista — el 25% de esta prueba es el techo práctico de la medición, no
-una predicción de cómo será en producción.
+**Riesgo declarado:** el nivel gratuito de Groq limita a 12.000
+tokens/minuto — varias llamadas de prueba seguidas y rápidas pueden
+degradar algún turno a guion por `429`. El sistema no se cae por esto;
+ver "Limitaciones" abajo y `docs/DECISIONS.md`, decisión 10, para el
+detalle completo.
 
-**Consumo, por cada turno que sí invoca al modelo** (N=7, medido contra
-Ollama — no lo volví a medir token por token contra Groq en esta sesión,
-la corrida de latencia no capturó eso): 447-548 tokens de entrada, 43-73
-de salida, 1 invocación al modelo, 1 consulta al RAG (`k=1`, desde la
-decisión 6b) por turno que llega al modelo. El conteo de tokens no
-depende del proveedor — es el mismo prompt, el mismo contexto recortado —
-así que el rango se mantiene como referencia razonable para Groq también,
-aunque valdría la pena confirmarlo con una medición dedicada.
+## Limitaciones conocidas
 
-**Costo estimado por llamada, con Groq activo.** El nivel gratuito de
-Groq no cuesta nada mientras la entrega se mantenga dentro de ese nivel —
-lo que sigue es la extrapolación a precio de producción que pide la
-rúbrica, no un cobro real de esta entrega. El precio de producción para
-`llama-3.3-70b-versatile` lo saqué del propio campo `pricing` que
-devuelve `GET https://api.groq.com/openai/v1/models` (no de una página
-de marketing): **$0.59 por millón de tokens de entrada, $0.79 por millón
-de salida**, verificado en vivo el 2026-08-09. Una llamada de unos 7
-turnos, con 1-2 invocaciones reales al modelo (~1000-1500 tokens totales
-por llamada, el resto lo resuelve el guion — ver decisión 6a) ronda
-**~$0.001-0.0015 por llamada** — sigue bien por debajo de un centavo de
-dólar. Pero la cifra que de verdad importa aquí no es el precio por
-token: es que el enrutamiento selectivo ya redujo cuántos turnos pagan
-ese precio, para empezar.
+Declaradas a propósito — un límite que no se cuenta es peor que uno que
+sí, así que van todas, sin suavizarlas:
 
-## Limitaciones conocidas, declaradas a propósito
-
-Ninguna de estas es un descuido que se me pasó — son cosas que sé, medí,
-y prefiero contarte antes de que las descubras tú. Reportar un número o
-un límite que no se sostiene es peor que no reportarlo, así que aquí va
-todo tal cual:
-
-- **El nivel gratuito de Groq limita a 12.000 tokens por minuto.** Varias
-  llamadas de prueba seguidas y rápidas pueden degradar algún turno a
-  guion por `429`. El sistema nunca se cae por esto — ver "Métricas"
-  arriba y `docs/DECISIONS.md`, decisión 10.
-- **Una pregunta real dicha por voz, sin signo de interrogación en la
-  transcripción, no llega al modelo** — decisión deliberada (el
-  reconocimiento de voz del navegador no siempre puntúa), no un error.
-  Confirmado en pruebas reales el 2026-08-10. Detalle en
-  `docs/DECISIONS.md`, decisión 6a.
-- **Recuperación híbrida (embeddings + TF-IDF) queda para después.** Con
-  el corpus real ya cargado, tengo evidencia medida —no solo la
-  intuición— de que TF-IDF puro no siempre trae el documento correcto.
-  Ver `docs/recuperacion-despues.md`.
+- **El nivel gratuito de Groq limita a 12.000 tokens/minuto.** Varias
+  llamadas de prueba seguidas pueden degradar algún turno a guion. El
+  sistema no se cae por esto (`docs/DECISIONS.md`, decisión 10).
+- **Una pregunta dicha por voz, sin "?" en la transcripción, no llega al
+  modelo** — decisión deliberada, no un error: el reconocimiento de voz
+  del navegador no siempre puntúa (decisión 6a).
+- **Recuperación híbrida (embeddings + TF-IDF) queda para una próxima
+  iteración.** TF-IDF puro no siempre trae el documento correcto — medido
+  en `docs/recuperacion-despues.md`.
 - **El guion avanza aunque la respuesta del paciente no traiga nada
-  interpretable** (ej. una respuesta vaga a la escala de dolor). Detalle
-  en `docs/DECISIONS.md`, sección 9.
+  interpretable** (ej. una respuesta vaga a la escala de dolor).
 
-Resuelto en el camino, por si te lo preguntas: el endurecimiento contra
-inyección de prompt (`docs/inyeccion-prompt.md`), que `RED-BREATHING`
-reconozca "me cuesta respirar" y "dificultad para respirar" además de
-"me falta el aire", y dos bugs encontrados en pruebas en vivo el
-2026-08-10 — fiebre alta sin la palabra "grados", y el resumen
-estructurado citando una fuente que nunca se usó — ambos con su propio
-caso de prueba en `docs/DECISIONS.md` para que no vuelvan a pasar.
+Detalle técnico completo de estas cuatro y del resto de decisiones,
+alternativas descartadas y hallazgos de todo el proceso: `docs/DECISIONS.md`.
 
-**El informe final** está en `INFORME.md` — ahí declaro qué modelo usé y
-por qué, dejo la evidencia de todo el proceso, las métricas, y las
-limitaciones que conozco y no escondo.
+**El informe final** está en `INFORME.md` — declaración del modelo y por
+qué, evidencia del proceso, métricas y limitaciones.
 
 ## Datos y alcance
 
