@@ -491,20 +491,17 @@ respuestas del modelo, mediciones crudas — no resúmenes sin cómo verificarlo
 
 ## 13. Capturas del demo
 
-Cada fila ya se probó en vivo en esta sesión (ver `docs/DECISIONS.md` y
-el historial de commits) — solo falta el archivo de imagen. Guarda cada
-captura en `docs/capturas/` con el nombre exacto de la tabla; en cuanto el
-archivo exista, la imagen aparece sola aquí abajo (son rutas relativas
-normales de Markdown, GitHub las renderiza directo).
+Tomadas en vivo el 2026-08-10, contra el servidor real con Groq activo.
+5 de 6 ya están; la sexta (resumen) se descarta a propósito abajo.
 
 | # | Qué capturar | Frase / acción exacta | Archivo |
 |---|---|---|---|
-| 1 | Saludo + respuesta del paciente con evidencia visible | *"me duele un poco la herida pero con la pastilla se calma"* | `docs/capturas/01-evidencia.png` |
-| 2 | Caso rojo escalando, indicador en rojo | *"estoy sangrando mucho y no para"* | `docs/capturas/02-caso-rojo.png` |
-| 3 | Documento nuevo citado como evidencia (verde) | Sube un documento de prueba (ver `docs/DECISIONS.md`, sección "Groq vuelve al bucle en vivo" para uno ya usado) y pregúntale por su contenido con `?` en el campo de texto | `docs/capturas/03-conocimiento-nuevo.png` |
-| 4 | El mismo documento eliminado, ya sin esa evidencia | Bórralo desde la consola y repite la misma pregunta | `docs/capturas/04-conocimiento-olvidado.png` |
-| 5 | Resumen estructurado descargado | Botón "Terminar y resumir" al final de una llamada | `docs/capturas/05-resumen.png` |
-| 6 | Motor/latencia por turno, guionado vs. modelo | Cualquier turno `scripted-routed` (ms) junto a uno `llm` (s) en la misma conversación | `docs/capturas/06-motor-latencia.png` |
+| 1 | ✅ Pregunta real fundamentada en el corpus real, citando en verde | *"¿es normal que la herida me duela más en la noche?"* → cita `02-cuidado-de-la-herida.md` | `docs/capturas/01-evidencia.png` |
+| 2 | ✅ Caso rojo escalando, indicador y encabezado en rojo | *"estoy sangrando mucho y no para"* → `RED-BLEEDING`, "ESCALAMIENTO INMEDIATO REQUERIDO" | `docs/capturas/02-caso-rojo.png` |
+| 3 | ✅ Documento nuevo citado como evidencia (verde) | Documento ficticio de crioterapia (`prueba-g5-crioterapia.md`, dispositivo inventado "Zephyr-9") + *"¿cada cuánto se usa el dispositivo Zephyr-9?"* por texto | `docs/capturas/03-conocimiento-nuevo.png` |
+| 4 | ✅ El mismo documento eliminado, ya sin esa evidencia | Documento borrado desde la consola, misma pregunta repetida — responde que no tiene esa información | `docs/capturas/04-conocimiento-olvidado.png` |
+| 5 | ⏳ Resumen estructurado descargado | Botón "Terminar y resumir" — **pendiente de repetir**: la primera toma (13:12) mostraba el bug de `citedSources` corregido en el commit `203d537` (un turno guionado citando un documento irrelevante) — se descartó a propósito en vez de mostrar un comportamiento ya corregido | `docs/capturas/05-resumen.png` |
+| 6 | ✅ Motor/latencia por turno, guionado vs. modelo | Turnos `scripted-routed` (4-6 ms) junto a uno `llm` (954 ms) en la misma conversación | `docs/capturas/06-motor-latencia.png` |
 
 <!-- Se renderizan automáticamente apenas existan los archivos: -->
 
