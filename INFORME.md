@@ -492,7 +492,7 @@ respuestas del modelo, mediciones crudas — no resúmenes sin cómo verificarlo
 ## 13. Capturas del demo
 
 Tomadas en vivo el 2026-08-10, contra el servidor real con Groq activo.
-5 de 6 ya están; la sexta (resumen) se descarta a propósito abajo.
+Las 6 completas.
 
 | # | Qué capturar | Frase / acción exacta | Archivo |
 |---|---|---|---|
@@ -500,7 +500,7 @@ Tomadas en vivo el 2026-08-10, contra el servidor real con Groq activo.
 | 2 | ✅ Caso rojo escalando, indicador y encabezado en rojo | *"estoy sangrando mucho y no para"* → `RED-BLEEDING`, "ESCALAMIENTO INMEDIATO REQUERIDO" | `docs/capturas/02-caso-rojo.png` |
 | 3 | ✅ Documento nuevo citado como evidencia (verde) | Documento ficticio de crioterapia (`prueba-g5-crioterapia.md`, dispositivo inventado "Zephyr-9") + *"¿cada cuánto se usa el dispositivo Zephyr-9?"* por texto | `docs/capturas/03-conocimiento-nuevo.png` |
 | 4 | ✅ El mismo documento eliminado, ya sin esa evidencia | Documento borrado desde la consola, misma pregunta repetida — responde que no tiene esa información | `docs/capturas/04-conocimiento-olvidado.png` |
-| 5 | ⏳ Resumen estructurado descargado | Botón "Terminar y resumir" — **pendiente de repetir**: la primera toma (13:12) mostraba el bug de `citedSources` corregido en el commit `203d537` (un turno guionado citando un documento irrelevante) — se descartó a propósito en vez de mostrar un comportamiento ya corregido | `docs/capturas/05-resumen.png` |
+| 5 | ✅ Resumen estructurado descargado, ya con el arreglo de `citedSources` aplicado (caso verde, sin escalamiento) | Botón "Terminar y resumir" al final de una llamada normal — la primera toma (13:12) mostraba el bug corregido en `203d537` (un turno guionado citando un documento irrelevante) y se descartó a propósito | `docs/capturas/05-resumen.png` |
 | 6 | ✅ Motor/latencia por turno, guionado vs. modelo | Turnos `scripted-routed` (4-6 ms) junto a uno `llm` (954 ms) en la misma conversación | `docs/capturas/06-motor-latencia.png` |
 
 <!-- Se renderizan automáticamente apenas existan los archivos: -->
