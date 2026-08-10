@@ -12,7 +12,7 @@ correcto es dejar de hablar y avisar a una persona.
 Lo construí para el Tech Sphere Challenge 2026 de Source Meridian, entre
 el 7 y el 10 de agosto.
 
-> **Estado: en construcción.** El modelo conectado es **Llama 3.3 70B vía
+> **Estado: entrega final, Tech Sphere Challenge 2026 (2026-08-10).** El modelo conectado es **Llama 3.3 70B vía
 > Groq** (nube, nivel gratuito) — el sucesor vigente de Llama 3.1 70B,
 > que Meta/Groq descontinuaron. La lista cerrada de modelos permitidos
 > (`CLAUDE.md`, regla 4) admite esa sustitución por comunicación oficial
@@ -221,30 +221,37 @@ dólar. Pero la cifra que de verdad importa aquí no es el precio por
 token: es que el enrutamiento selectivo ya redujo cuántos turnos pagan
 ese precio, para empezar.
 
-## Lo que todavía me falta para la entrega
+## Limitaciones conocidas, declaradas a propósito
 
-- **Resuelto (2026-08-09, decisión 10): el camino `llm` ya no rompe la
-  sensación de "tiempo real".** Con Groq (Llama 3.3 70B, el sucesor
-  vigente de Llama 3.1 70B tras la comunicación oficial de Source
-  Meridian) el camino `llm` mide P50 0.685s / P95 0.756s — dos órdenes de
-  magnitud por debajo de los 60.8s/95.3s que medía con Ollama local, y
-  muy por debajo del umbral de 30s que me había fijado como tolerable.
-  Queda un riesgo declarado, no una decisión sin tomar: el nivel gratuito
-  de Groq limita a 12.000 tokens por minuto, así que varias llamadas de
-  prueba seguidas y rápidas pueden degradar algún turno a guion por
-  `429`. El sistema nunca se cae por esto — ver "Métricas" arriba y
-  `docs/DECISIONS.md`, decisión 10.
-- Recuperación híbrida (embeddings + TF-IDF): con el corpus real ya
-  cargado, tengo evidencia medida —no solo la intuición— de que TF-IDF
-  puro no siempre trae el documento correcto. Ver
-  `docs/recuperacion-despues.md`.
-- Capturas del demo y video (entregables 03/04) — ver `INFORME.md`,
-  §13-14.
+Ninguna de estas es un descuido que se me pasó — son cosas que sé, medí,
+y prefiero contarte antes de que las descubras tú. Reportar un número o
+un límite que no se sostiene es peor que no reportarlo, así que aquí va
+todo tal cual:
 
-Ya resuelto en sesiones anteriores, por si te lo preguntas: el
-endurecimiento contra inyección de prompt (`docs/inyeccion-prompt.md`),
-y que `RED-BREATHING` en `triage.js` reconozca "me cuesta respirar" y
-"dificultad para respirar", no solo "me falta el aire".
+- **El nivel gratuito de Groq limita a 12.000 tokens por minuto.** Varias
+  llamadas de prueba seguidas y rápidas pueden degradar algún turno a
+  guion por `429`. El sistema nunca se cae por esto — ver "Métricas"
+  arriba y `docs/DECISIONS.md`, decisión 10.
+- **Una pregunta real dicha por voz, sin signo de interrogación en la
+  transcripción, no llega al modelo** — decisión deliberada (el
+  reconocimiento de voz del navegador no siempre puntúa), no un error.
+  Confirmado en pruebas reales el 2026-08-10. Detalle en
+  `docs/DECISIONS.md`, decisión 6a.
+- **Recuperación híbrida (embeddings + TF-IDF) queda para después.** Con
+  el corpus real ya cargado, tengo evidencia medida —no solo la
+  intuición— de que TF-IDF puro no siempre trae el documento correcto.
+  Ver `docs/recuperacion-despues.md`.
+- **El guion avanza aunque la respuesta del paciente no traiga nada
+  interpretable** (ej. una respuesta vaga a la escala de dolor). Detalle
+  en `docs/DECISIONS.md`, sección 9.
+
+Resuelto en el camino, por si te lo preguntas: el endurecimiento contra
+inyección de prompt (`docs/inyeccion-prompt.md`), que `RED-BREATHING`
+reconozca "me cuesta respirar" y "dificultad para respirar" además de
+"me falta el aire", y dos bugs encontrados en pruebas en vivo el
+2026-08-10 — fiebre alta sin la palabra "grados", y el resumen
+estructurado citando una fuente que nunca se usó — ambos con su propio
+caso de prueba en `docs/DECISIONS.md` para que no vuelvan a pasar.
 
 **El informe final** está en `INFORME.md` — ahí declaro qué modelo usé y
 por qué, dejo la evidencia de todo el proceso, las métricas, y las

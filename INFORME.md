@@ -384,7 +384,7 @@ guionado) ronda **~$0.001-0.0015 por llamada**. La cifra que importa no es
 el precio por token, es que el enrutamiento selectivo ya redujo cuántos
 turnos pagan ese precio en absoluto.
 
-## 11. Limitaciones conocidas y decisiones pendientes
+## 11. Limitaciones conocidas, declaradas a propósito
 
 **Declarado explícitamente, no ocultado — siguiendo la instrucción de la
 rúbrica de que reportar números que no se sostienen es peor que no
@@ -398,11 +398,14 @@ reportarlos:**
   evaluación real, solo bajo un caso de estrés deliberado. `LLM_PROVIDER=
   ollama` (local, sin límite de tasa externo, pero P50 60.8s) queda
   documentado como alternativa sin tocar código.
-- **`GROQ_API_KEY` es ahora parte de las credenciales que la compuerta G2
-  exige resolver en 15 minutos.** Decisión de producto sin cerrar (ver
-  `docs/DECISIONS.md`, "Pendientes antes de entregar"): key de evaluación
-  en el README, instrucciones de crear una gratis en el momento, o
-  Ollama como respaldo garantizado.
+- **`GROQ_API_KEY` es parte de las credenciales que la compuerta G2 exige
+  resolver en 15 minutos — resuelto sin poner una key en el repositorio.**
+  Se intentó una key de evaluación dedicada en el README; GitHub push
+  protection la bloqueó (detecta cualquier API key real en un commit, por
+  diseño). Resuelto con instrucciones de crear una key gratis en
+  console.groq.com (menos de 2 minutos, dentro de los 15) como camino
+  principal, y `LLM_PROVIDER=ollama` sin cuenta externa como respaldo. Ver
+  `docs/DECISIONS.md`, decisión 10 y "Pendientes antes de entregar".
 - **TF-IDF puro, sin componente semántico** — ver §5.
 - **Reglas de triage no cubren toda formulación posible.** Ejemplos
   documentados y con test de regresión: "dejé de tomar" (no-adherencia,
