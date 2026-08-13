@@ -196,6 +196,9 @@ alternativas descartadas y hallazgos de todo el proceso: `docs/DECISIONS.md`.
 **El informe final** está en `INFORME.md` — declaración del modelo y por
 qué, evidencia del proceso, métricas y limitaciones.
 
+**El video** (demo funcional + las dos preguntas de cierre frente a
+cámara) está en [Google Drive](https://drive.google.com/drive/folders/18j4fxGiJdNu2KhYhUXyQRqcrx14OtOPV?usp=sharing).
+
 ## Datos y alcance
 
 No hay datos de pacientes reales en este repositorio, y no debe haberlos

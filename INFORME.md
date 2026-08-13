@@ -560,4 +560,6 @@ proveedor activo cambiara de Ollama local (60-95s por invocación) a Groq
   de decisión anotado y 3 datos duros al pie (privada, pide acceso si hace
   falta compartirla): <https://claude.ai/code/artifact/d3bf5c85-8b9a-4951-aa3a-1c1dd4182572>
 - README (instalación, ≤15 min, API): `README.md`
+- Video (entregable 04, demo + preguntas de cierre frente a cámara):
+  [Google Drive](https://drive.google.com/drive/folders/18j4fxGiJdNu2KhYhUXyQRqcrx14OtOPV?usp=sharing)
 - Reglas del proyecto: `CLAUDE.md`

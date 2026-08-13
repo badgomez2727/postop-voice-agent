@@ -9,6 +9,32 @@ Duración objetivo total: **6-8 minutos.**
 
 ---
 
+## Ajustes para esta grabación (v2, después de revisar la toma anterior)
+
+La toma anterior ya tenía todo el contenido correcto — intro, demo, ciclo
+G5 completo, las dos preguntas de cierre completas (incluida la parte de
+"con dos semanas más"). No hace falta cambiar qué dices, solo cómo:
+
+- **La frase del caso rojo, de corrido.** Di *"estoy sangrando mucho y no
+  para"* sin pausas ni relleno ("eh", "este") en medio — el reconocimiento
+  de voz a veces corta la frase si te detienes a mitad. Si igual se corta
+  y el agente responde antes de que termines, **no pares la grabación ni
+  repitas desde cero** — completa la idea en el turno siguiente. Ya
+  probamos que el sistema lo maneja bien turno a turno, y hasta es un
+  buen punto a favor si te preguntan por robustez.
+- **Ritmo en la demo, sin pararte a pensar en voz alta.** Si te trabas en
+  algún paso, sigue adelante en vez de intentar reformular — un tropiezo
+  corto se nota menos que una pausa larga buscando la palabra.
+- **Q2 ya te salió completa — no le agregues más.** Alternativa
+  descartada, por qué, riesgo encontrado, "con dos semanas más": las
+  cuatro partes ya estaban. Repetir esa misma idea con tus palabras basta.
+- **Duración: que baje un poco es un efecto, no una meta.** No fuerces
+  cortar contenido para llegar a los 6-8 minutos — si sale más fluida,
+  probablemente sale más corta sola. Prioriza fluidez sobre duración
+  exacta.
+
+---
+
 ## 0. Antes de grabar (2 minutos, esto no es parte del video)
 
 - [ ] Servidor corriendo (`npm start`), `.env` con `GROQ_API_KEY` real,
