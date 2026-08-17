@@ -762,6 +762,75 @@ real -- los tres casos de siempre (rojo, ámbar, negación), los dos casos
 de fiebre sin "grados" (41 y 45), y el falso positivo de la edad,
 confirmado que NO dispara.
 
+## 12. Groq decomisiona `llama-3.3-70b-versatile` — se mantiene Groq como
+default, no se cambia a Ollama (2026-08-16)
+
+**Origen.** Correo de Groq recibido 2026-08-16 (mismo día de entrega
+según calendario oficial de Source Meridian para revisiones, ventana
+10-18 ago): *"the Llama 3.3 70B Versatile model will be decommissioned
+on August 16, 2026 (...) we encourage you to transition (...) to GPT OSS
+120B / Qwen3.6 27B."*
+
+**Por qué el reemplazo sugerido por Groq no aplica.** GPT OSS y Qwen3.6
+no son de la familia Llama ni del proveedor Meta -- son otro proveedor y
+otra familia de modelo. La excepción de `CLAUDE.md` regla 4 (misma que
+habilitó `llama-3.3-70b-versatile` como sucesor de
+`llama-3.1-70b-versatile` en la decisión 10) exige explícitamente "mismo
+proveedor, misma familia" y aclara que "no amplía la lista a otros
+proveedores ni a otras familias de modelo". Adoptar GPT OSS o Qwen
+descalificaría la entrega por G3, no la salvaría.
+
+**Verificación en vivo, 2026-08-16 (no solo el texto del correo):**
+
+```
+GET https://api.groq.com/openai/v1/models
+Llama disponibles hoy: llama-3.1-8b-instant, llama-3.3-70b-versatile,
+                        meta-llama/llama-prompt-guard-2-{22m,86m}
+POST /chat/completions con llama-3.3-70b-versatile -> responde 200 OK
+```
+
+El modelo activo seguía respondiendo al momento de escribir esto, pese a
+ser el día anunciado de decomiso. No hay un sucesor Llama de 70B
+disponible en Groq hoy -- `llama-3.1-8b-instant` es otra clase de
+tamaño (no un sucesor del modelo descontinuado, mismo razonamiento que
+en la decisión 10) y los `prompt-guard-2` no son conversacionales.
+
+**Se evaluó volver a Ollama como default (como en la decisión 5) y se
+descartó.** Cambiar el default reabre el riesgo de G2 que la decisión 10
+ya había cerrado a propósito: el README documenta que descargar el
+modelo de Ollama (~2GB) "queda fuera de los 15 minutos de G2, es
+prerrequisito de máquina". G2 no tiene reintento salvo por credenciales
+rotas -- cambiar el default cambiaría un riesgo de degradación de calidad
+(bajo, sin gate) por un riesgo de no-evaluación (alto, sin segunda
+oportunidad).
+
+**Prueba de degradación en vivo, 2026-08-16.** Se levantó un servidor
+aislado (puerto 3099, sin tocar producción) con `GROQ_MODEL` apuntando a
+un modelo inexistente, simulando a Groq completamente caído, y se
+corrieron los tres casos que exige `CLAUDE.md` más un turno fuera de
+guion que fuerza al LLM:
+
+| Caso | Resultado |
+|---|---|
+| Pregunta fuera de guion (fuerza el LLM) | `engine: scripted-fallback`, `grounded: true` (evidencia sigue citada), consola avisa en voz alta: `⚠️ Groq (...) no respondió — degradando a diálogo guionado` |
+| Rojo (sangrado) | `engine: scripted-routed`, `escalate: true`, `modelInvocations: 0` -- el rojo nunca invoca al modelo, con o sin Groq (decisión 6a) |
+| Negación ("no tengo fiebre") | No escala, no se confunde con síntoma positivo |
+
+**Conclusión.** G4 (saludo + pregunta trivial) sigue pasando aunque Groq
+esté totalmente caído -- lo resuelve el guion, no el modelo. El riesgo
+real que queda, declarado y no oculto: si Groq muere durante la ventana
+de revisión (10-18 ago), las respuestas generativas a preguntas fuera de
+guion pierden la parte conversacional y caen a fallback guionado, lo que
+puede pesar en los criterios de "Calidad de la conversación (voz)" y
+algo en "RAG" -- pero no dispara ninguna compuerta eliminatoria.
+
+**Decisión: Groq (`llama-3.3-70b-versatile`) se mantiene como proveedor
+activo por defecto.** No se modifica `.env`, `.env.example` ni el README.
+La salida de emergencia sigue siendo la ya documentada: si Groq deja de
+responder durante la evaluación, `LLM_PROVIDER=ollama` en una línea del
+`.env`, sin tocar código -- misma alternativa de la decisión 10, sin
+cambios.
+
 ## Pendientes antes de entregar
 
 - [x] **Decisión de producto sobre el riesgo a G4 — resuelta: opción (a),
