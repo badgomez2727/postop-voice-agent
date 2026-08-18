@@ -243,12 +243,7 @@ export async function rebuildIndex() {
     const pieces = chunkDocument(body);
     let indexedCount = 0;
 
-    pieces.forEach((text, i) => {
-      const tokens = tokenize(text);
-      // Fragmento por debajo del mínimo indexable (portada, título suelto):
-      // no entra al índice en absoluto, no solo se penaliza.
-      if (tokens.length < MIN_CHUNK_TOKENS) return;
-
+    const indexPiece = (text, tokens, i) => {
       const tf = new Map();
       for (const token of tokens) tf.set(token, (tf.get(token) || 0) + 1);
 
@@ -265,7 +260,33 @@ export async function rebuildIndex() {
         weight: fragmentQuality(text) * lengthPenalty(tokens.length)
       });
       indexedCount++;
+    };
+
+    pieces.forEach((text, i) => {
+      const tokens = tokenize(text);
+      // Fragmento por debajo del mínimo indexable (portada, título suelto):
+      // no entra al índice en absoluto, no solo se penaliza.
+      if (tokens.length < MIN_CHUNK_TOKENS) return;
+      indexPiece(text, tokens, i);
     });
+
+    // Si el umbral de arriba dejó al documento ENTERO sin un solo fragmento
+    // indexado -- un documento corto de una sola frase, como el que sube un
+    // evaluador para probar G5, cae fácil bajo MIN_CHUNK_TOKENS -- el
+    // documento desaparece del índice sin ningún aviso: queda listado como
+    // "guardado" pero el agente nunca puede citarlo (bug encontrado
+    // probando G5 con un documento sintético corto, 2026-08-16). El umbral
+    // existe para basura estructural DENTRO de un documento con más
+    // fragmentos buenos alrededor (portada, título suelto), no para borrar
+    // un documento entero que sí tiene contenido real. Se garantiza al
+    // menos un fragmento -- el más grande -- para que ningún documento vivo
+    // quede invisible.
+    if (indexedCount === 0 && pieces.length) {
+      const [text, i] = pieces
+        .map((text, i) => [text, i])
+        .sort((a, b) => b[0].length - a[0].length)[0];
+      indexPiece(text, tokenize(text), i);
+    }
 
     docs.push({ file, chunks: indexedCount, bytes: Buffer.byteLength(raw), title, sourcePath });
   }

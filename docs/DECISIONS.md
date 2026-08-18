@@ -831,6 +831,47 @@ responder durante la evaluación, `LLM_PROVIDER=ollama` en una línea del
 `.env`, sin tocar código -- misma alternativa de la decisión 10, sin
 cambios.
 
+## 13. Un documento corto podía desaparecer del índice sin ningún aviso (2026-08-16)
+
+**Encontrado probando G5 en vivo** (subir un documento sintético de prueba,
+usarlo, eliminarlo) con un documento deliberadamente corto -- una sola
+frase, el tipo de documento que un evaluador escribiría a mano para probar
+conocimiento vivo, no un PDF completo.
+
+**El bug.** `rebuildIndex()` en `src/rag.js` descarta cualquier fragmento
+por debajo de `MIN_CHUNK_TOKENS` (25 tokens tras stopwords) -- pensado para
+basura estructural (portada, título suelto) *dentro* de un documento con
+más fragmentos buenos alrededor. Pero se aplicaba igual cuando el documento
+completo era corto: un documento de ~14 tokens de contenido real quedaba
+con **0 fragmentos indexados**, sin ningún error ni aviso -- la consola de
+administración lo seguía mostrando como "guardado", pero `retrieve()` no
+podía encontrarlo nunca, y el agente jamás podía citarlo. Exactamente el
+escenario que evalúa G5, fallando en silencio.
+
+**Verificado antes del fix:** documento subido, `GET /api/knowledge` lo
+lista con `chunks: 0`, `POST /api/retrieve` con la palabra distintiva del
+documento devuelve `evidence: []`.
+
+**Arreglo.** Si el filtro deja a un documento entero sin un solo fragmento
+indexado, se conserva al menos el fragmento más grande igual, aunque esté
+bajo el umbral. No cambia el comportamiento del filtro dentro de
+documentos grandes (sigue descartando un título suelto entre chunks
+buenos) -- solo evita que un documento entero se vuelva invisible.
+
+**Verificado después del fix**, contra el servidor real:
+- Mismo documento de prueba: `chunks: 1`, `retrieve` lo encuentra
+  (`rawScore: 0.2965`).
+- Ciclo G5 completo: se usa en una llamada real (`grounded: true`,
+  evidencia citada), se elimina, y `retrieve` vuelve a devolver `[]` --
+  lo olvida.
+- Los tres casos de siempre (rojo, ámbar con `AMBER-PAIN-SCORE`, negación)
+  y los 129 tests automáticos (`npm test`), todos en verde después del
+  cambio.
+
+Documento de prueba (`knowledge/zzz-test-g5.md`) borrado del repo tras
+verificar -- no era parte de ningún corpus real, solo existió para esta
+prueba.
+
 ## Pendientes antes de entregar
 
 - [x] **Decisión de producto sobre el riesgo a G4 — resuelta: opción (a),
