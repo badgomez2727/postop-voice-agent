@@ -872,6 +872,26 @@ Documento de prueba (`knowledge/zzz-test-g5.md`) borrado del repo tras
 verificar -- no era parte de ningún corpus real, solo existió para esta
 prueba.
 
+## 14. Fecha límite real: 12 de agosto, no 10 -- extensión oficial por el sismo
+
+El README y `CLAUDE.md` de este repositorio decían "entrega el 10 de
+agosto", tomado del calendario original del reto oficial
+(`reto-oficial/README.md`). El commit final de este proyecto es del 12 de
+agosto. La diferencia tiene respaldo: **comunicación oficial de Source
+Meridian, citada textual:**
+
+> "Movimos la fecha límite de entrega hasta el miércoles 12 de agosto a
+> la medianoche. Lo decidimos porque no nos parece razonable pedirle a
+> nadie que realice una entrega de un proyecto mientras el país entero
+> está pendiente de las noticias [por el sismo], revisando que su
+> familia esté bien, o lidiando con cortes de luz o de internet. El
+> cambio aplica igual para todos los que están en el reto, así que no
+> quedas en desventaja por lo que no hayas podido avanzar hoy."
+
+Extensión general, aplicada a todos los participantes por igual -- no es
+una excepción individual. Entrega final (`1a1e663`, 2026-08-12 20:33)
+queda dentro del plazo real. No hay riesgo de G1 por esto.
+
 ## Pendientes antes de entregar
 
 - [x] **Decisión de producto sobre el riesgo a G4 — resuelta: opción (a),

@@ -6,7 +6,10 @@ Léeme al inicio de cada sesión de trabajo en este repositorio.
 
 Agente de voz para seguimiento post-operatorio de pacientes. Proyecto para el
 **Tech Sphere Challenge 2026** de **Source Meridian**. Construcción:
-**7–10 de agosto de 2026** (entrega el 10 de agosto).
+**7–10 de agosto de 2026**. Entrega: originalmente el 10, **extendida al 12
+de agosto por comunicación oficial de Source Meridian** (aplicada a todos
+los participantes por igual, por el sismo — cita textual en
+`docs/DECISIONS.md`, decisión 14). Entrega final real: 12 de agosto.
 
 El repositorio oficial del reto (README, rúbrica, stack técnico, dataset) vive en
 `../reto-oficial/`. Ante cualquier duda sobre reglas de evaluación, esa es la fuente de
